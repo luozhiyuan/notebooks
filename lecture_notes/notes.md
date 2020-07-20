@@ -2,17 +2,17 @@
 
 罗志渊
 
-[本文是作者情绪的宣泄, 有种怎么写也写不完的无力感, 同时水平和精力有限, 错漏之处, 烦请读者指正]
+[本文有种怎么写也写不完的无力感, 有些内容比较主观, 请读者自斟; 同时水平和精力有限, 错漏之处, 也烦请读者指正]
 
-日常搬砖没有什么特别有意思的东西可以分享，但我不想浪费这次机会，这篇年度最佳的论文[differentiable visual computing](https://people.csail.mit.edu/tzumao/phdthesis/phdthesis.pdf)，至少对于我没见过机器学习的人来说，这类从未见过的方法，刷新了我的认知，觉得很有意思，所以就拿来分享给和我一样不懂机器学习和渲染的初学者。本文提到的一些按我自己理解写的源码可在我的[notebook](https://github.com/luozhiyuan/notebooks)中浏览(包含了AD, MC, MCMC, HMC, H2MC等演示代码)。
+日常搬砖没有什么特别有意思的东西可以分享，但我不想浪费这次机会，这篇年度最佳的论文[differentiable visual computing](https://people.csail.mit.edu/tzumao/phdthesis/phdthesis.pdf)，至少对于我没见过机器学习的人来说，这类从未见过的方法，刷新了我的认知，觉得很有意思，所以就拿来分享给和我一样不懂机器学习和渲染的初学者。本文提到的一些按我自己理解写的源码可在我的[notebook](https://github.com/luozhiyuan/notebooks)中浏览(包含了目录中AD, MC, MCMC, HMC, H2MC等内容的演示代码)。
 
-这里的内容称为Graphics是不太合适的, 并没有包含物理模拟等内容, 如果想了解Differentiable Graphics目前的工作, 可以继续参考[DiffTaiChi](https://arxiv.org/abs/1910.00935), 也是非常有意思的工作. 另一方面, 有很多基础知识还是有相通之处的, 只是应用场景的不同而导致一些独特的领域知识的差异.
+这里的内容称为Graphics是不太合适的, 并没有包含物理模拟等内容, 如果想更多地了解Differentiable Graphics的内容, 可以继续参考[DiffTaiChi](https://arxiv.org/abs/1910.00935), 也是非常有意思的工作. 另一方面, 有很多基础知识还是有相通之处的, 只是应用场景的不同而导致一些领域知识的差异.
 
 ## 内容
 
-1. Automatic Differentiation (AD)
+1. [Automatic Differentiation (AD)](#Automatic Differentiation)
 
-2. Monte Carlo (MC)
+2. [Monte Carlo (MC)](#MonteCarlo)
 
 3. Markov Chain
 
@@ -32,7 +32,7 @@
 
 9. *Path Integral
 
-### Automatic Differentiation
+## Automatic Differentiation
 
 假设我们都学过微积分， 那里面的内容大致可以分为微分和积分，这里介绍的是一种自动微分方法。
 
@@ -256,7 +256,7 @@ $$
 
 以上自动微分是一个基本的知识，应用比较广泛，除了机器学习，如CFD，以及一些别的物理模拟系统中也会用到。
 
-### Monte Carlo
+## Monte Carlo <a name = "MonteCarlo"></a>
 
 由于平时工作从来没有接触过这类比较高端的话题，只记得十多年前翻过一本比较通俗易懂的书，所以以下包括后面MCMC和MCMC path tracing等内容主要参考自[PBR](http://www.pbr-book.org/)，也是我对之前读书内容的一个复习，有兴趣的建议直接读原版内容。
 
@@ -286,29 +286,103 @@ I\simeq \frac{b-a}{N}\sum_{i=1}^{N} f(x_i)
 $$
 或者,可以这样理解, 在$[a,b]$上, $N \rightarrow \infty$个采样点的平均值趋向于$f$的平均值, 积分就是求面积, 所以面积=区间大小$\times$均值.
 
+//pbr
+
 inversion method
 
 rejection method
 
-### Markov Chain
+//montecarlo图片
+
+## Markov Chain
+
+简单来说就是我们的状态以一定的概率在状态空间中随机游走. 不考虑太长的历史,转移到当前状态的概率$P(x\rightarrow y)$只与上一个状态有关. 我们以离散马尔科夫链为例:
+
+```mermaid
+stateDiagram
+x1 --> x2: 1
+x2 --> x2: 0.1
+x2 --> x3: 0.9
+x3 --> x1: 0.6
+x3 --> x2: 0.4
+
+```
+
+表示转移的随机矩阵(i行j列表示Xi转移到Xj的概率, 并且每行的和为1)为:
+$$
+T=\begin{pmatrix}
+0 & 1 & 0 \\
+0 & 0.1 & 0.9 \\
+0.6 & 0.4 & 0 \\
+\end{pmatrix}
+$$
+比如我上一次的概率分布是$\pi(q)=\{0.2,0.4,0.4\}$,  这里第$i$项是停留在$x_i$的概率. 那么下一个分布就由左成$T$得到, $\pi(q',q) = \pi(q)T$.
+
+这个马尔科夫链有几个比较好的特征:
+
+1. Detailed balance(Stationary distribution): 就是无论你以怎样的概率分布取一个状态, 最终都会收敛到一个一个固定的分布: 比如一开始以0.6的概率取x1, 0.1 的概率取x2, 0.3的概率取x3, 经过无穷多次状态转移(每转移一次就是$(0.6,0.1,0.3)$ 左乘一次), 一直转移下去, 最终的分布必然为$\pi =(0.2,0.4,0.4)$. 实际上, 最终的稳定态是随机矩阵的左特征向量即满足$\pi T = \pi$.
+
+2. Ergodicity(遍历性): 从上图中任意状态节点$x_i$开始, 都可以到达图中任何状态节点$x_j​. (可能发生的事情必然会发生), 需要可遍历的话需要满足两个条件:
+
+   2.1 Irreducible(不可约链): 对每一个状态节点转移到任意一个状态节点的概率都大于0. (比如上图中如果去掉$x_3 \rightarrow x_1$, 就不是 irreducible的了)
+
+   2.2 Aperiodic(非周期性): 状态转移过程中不会掉进概率上封闭的环里出不来.
+
+好在我们大部分情况下的Markov Chain, 都是很好的.
+
+## Markov Chain Monte Carlo 
+
+我们可以把转移概率看成是条件概率:$T(q'\rightarrow q) = T(q\vert q')$, 在离散的情况下, 到达$q$的概率为所有能到达$q$的$q'$之和(左乘前面提到的随机矩阵), 连续的情况下, 求和就变成了积分:
+$$
+\pi(q)=\int_{Q}  \pi(q')T(q'\rightarrow q) dq'
+$$
+这个转移概率是我们给它注入的先验知识, 就像小孩子的天赋一样, 他先天知道一些知识和思维方法, 那学起来肯定会比别人快一些. 如果我们的先验的知识能让他往正确的方向跑, 那它即使没赢在起跑线上了(起始状态概率很低, 离高分布区域很远), 那也能加倍赶上. 我们没法用无穷多的采样数, 但在(一开始未知的)概率高的区域能增加(有效)采样数, 这能使我们收敛得更快.
+
+这种注入先验转移概率, 给予足够的时间让他稳定下来的方法, 就是Markov Chain Monte Carlo(MCMC).
+
+### Metropolis-Hastings
+
+Metropolis-Hastings是最简单的一种MCMC方法. 设当前的马尔科夫状态为$q$, 我们对当前采样点进行一些微小的扰动(随机游走一下), 得到下一个状态$q'$, 那么我们需要有个概率来决定他是否转移(接受这个新状态$q'$). 这个概率如下定义:
+$$
+a(q\rightarrow q') = \min(1, \frac{Q(q'\rightarrow q) \pi(q')}{Q(q\rightarrow q')\pi(q)})
+$$
+其中$Q$称为Hastings项, 为提前随机产生上面这个微小扰动$\mathbf{e}$(使得随机游走到$q'$)的概率分布.
+
+我们随机一下, 如果比$a$小就接受(下一个状态为$q'$), 比$a$大就拒绝(下一个状态仍为$q$).
+
+一种比较经典的做法是这个$Q$符合高斯分布,  而高斯分布是一种对称的分布也就是说$q \rightarrow q'$的概率等于$q'\rightarrow q$ 的概率, 右边分式消去得到:
+$$
+a (q\rightarrow q') = \min(1, \frac{\pi(q')}{\pi(q)})
+$$
+//pbr 例子
+
+//MCMC 图片
+
+### Hamiltonian Monte Carlo
+
+前面我们提到我们要给我们的概率世界注入先验知识, 同样, 在我们探索世界的过程中, 发展出了物理学, 而物理学非常成功的描绘了真实世界的图景. 自然, 我们可以把物理学里的探索方法(运动位移), 引入到概率世界的探索(状态迁移)中来.
+
+物理中有两个基本量: 动量($p=mv$)与位置($q$). $(q,p)$这两个定义了一个相空间的坐标(phase space), 我们引入可以改变$q$的动量, $\pi(q,p)$在位置轴$q$上的投影就是我们的目标分布$\pi(q)$:
+$$
+\pi(q,p)=e^{-H(q,p)} \in (0,1)
+$$
+(参考Boltzmann distribution: $\pi(state) \propto \exp(E/(kT))$, $E$为能量, $T$为温度, 描述了粒子在能量为$E$, 温度为$T$的情况下处于状态$state$的分布).
+
+这里插点题外话,  哈密尔顿力学非常重要, 哈密尔顿方程的特性在数学上,物理上, 信息学等不同领域都有不同的意义. 比如在量子力学统计诠释中, 在测量之前我们无法得知精确的位置, 粒子的位置是符合一个概率分布的(期望是$\langle q\rangle$), 而这个分布在无穷远处(后面我们会看到$H\rightarrow \infty$)的概率为0, 这个分布基本上可以直接映射到我们的$\pi(q)$.
+
+$H$为定义在相空间上的函数, 如果高维的理解起来有些困难, 看的时候不妨把他假设成一维的, 那样$H$就是个二元函数.
+
+//HMC 图片
+
+## Path tracing and bidirectional path tracing
+
+## Metropolis light transport
+
+10多年前看过一个叫Eric Veach的人的博士论文(90年代的论文), 感觉就两个字: 懵逼. MLT不仅看不懂, 实现上也无从入手, 这家伙还凭借path tracing方面的研究得了奥斯卡. 如今看了新版的PBR内容, 了解到原版的MLT比较难实现, 后面有人提了个非常简单的算法(PSSMLT), 这里抄的正是这种.
 
 
 
-### Markov Chain Monte Carlo 
-
-
-
-#### Metropolis-Hasting
-
-#### Hamiltonian Monte Carlo
-
-
-
-### Path tracing and bidirectional path tracing
-
-### Metropolis light transport
-
-### Differentiable rendering
+## Differentiable rendering
 
 这里的内容来自于论文[Differentiable Monte Carlo Ray Tracing through Edge Sampling](https://people.csail.mit.edu/tzumao/diffrt/).
 
@@ -438,7 +512,7 @@ $$
 类似前面对屏幕上边的处理, 我们主要考虑面上的点($\delta(\alpha(p,m))=1$), 最后有如下形式:
 $$
 \int_{\alpha(p,m)=0} \frac{\nabla\alpha(p,m)}{\mid\mid \nabla_m\alpha(p,m) \mid\mid} h(p,m) \frac{1}{\mid\mid n_m\times n_h \mid\mid} d\sigma'(m) \\
-n_h = \frac{(v_0-p)\times(v_1-p)}{\mid\mid (v_0-p)\times(v_1-p) \mid\mid}
+n_h = \frac{(v_0-p)\times(v_1-p)}{\mid\mid (v_0-p)\times(v_1-p) \mid\mid}
 $$
 与屏幕上的边有几个不同之处: 1. 我们积分的线是把边$(v_0, v_1)$, 通过$p$投影到场景上的那条线,如前面图((a) second visibility) 中的半透明的三角形,与场景相交的那条线(图上是光源); 2. 这里多了个修正项$\mid\mid n_m\times n_h \mid\mid$, 需要看前面的图((b) width correction), $m$就是$(v_0,v_1)$投影到黄色面光源上的一个点,  $m$在面的交线上, 所属两个面$(v_0,v_1,p)$与黄色的场景面(光源)分别有两个法线对应$n_h,n_m$, 而我们的采样点在$(v_0,v_1)$这条边上, 这条边有无穷小的厚度(宽度)-也就是面的有一个无穷小的厚度, 将这个厚度投影到场景面上, 我们得到$(v_0, v_1)$的厚度与$m$所在直线的厚度的比率:$1 /\sin\theta, (\sin\theta = \mid\mid n_m\times n_h) \mid\mid$. 在一条边上采样相当于在一个宽度为无穷小的一个面上采样(后面会提到$(v_0,v_1)$上的采样点是通过将这条边扩展为一个面向跟踪光线的billboard得到的).
 
@@ -508,7 +582,9 @@ $$
 
    <img src="./images/hough3d_silhouette.png" alt="image-20200711134541780" style="zoom:50%;" />
 
-   3. 材质上使用LTC(linearly transformed cosines). 这是用三角函数逼近BRDF函数的方法, 作为一个采样边的重要度. 具体可参见[Real-Time Polygonal-Light Shading with Linearly Transformed Cosines](https://blogs.unity3d.com/2016/05/26/real-time-polygonal-light-shading-with-linearly-transformed-cosines/)
+   3. 材质上使用LTC(linearly transformed cosines). 这是用三角函数逼近BRDF函数的方法, 作为一个采样边的重要度. 具体可参见[Real-Time Polygonal-Light Shading with Linearly Transformed Cosines](https://blogs.unity3d.com/2016/05/26/real-time-polygonal-light-shading-with-linearly-transformed-cosines/). 
+   
+      <img src=".\images\sample_on_edge.png" alt="image-20200712144434425" style="zoom:50%;" />
 
 
 
@@ -522,9 +598,7 @@ $$
 
 [A Differential Theory of Radiative Transfer](https://dl.acm.org/doi/10.1145/3355089.3356522) [源码](https://github.com/uci-rendering/dtrt)
 
-
-
-### Hessian-Hamiltonian Monte Carlo ray tracing
+## Hessian-Hamiltonian Monte Carlo ray tracing
 
 通常用高斯分布来做为hasting term， 图形学里的anistropic的材质， 在x，y两个方向上是分布不均匀的， 我们用二维高斯来拟合，而gradient，反映了这两个方向上的变化率，进一步的反映二阶导的hessian 矩阵可以引导我们采样的方向。比如牛顿法。
 
@@ -634,11 +708,11 @@ S = \sum_{i=1}^{N} s_i \mathbf{e}_i \mathbf{v}_i^T, \mathbf{o} = \sum_{i=1}^{N}o
 $$
 $\mathbf{v}_i$为标准正交基(第$i$项为1, 其余为 0).
 
-由于$\mathbf{p}(0)$,是均值为0, 协方差为$A^{-1}$的正态分布, 经过线性变换后的$\mathbf{x}(T)$的正态分布的协方差矩阵$\Sigma$以及均值$\mathbf{\mu}$ 分别为:
+由于$\mathbf{p}(0)$,是均值为0, 协方差为$A^{-1}$的高斯分布, 经过线性变换后的$\mathbf{x}(T)$的高斯分布的协方差矩阵$\Sigma$以及均值$\mathbf{\mu}$ 分别为:
 $$
 \Sigma = (SA)A^{-1}(SA)^T= SAS^T, \mathbf{\mu} = \mathbf{o}
 $$
-为了使得我们的近似不会跑太远出现偏差, 用一个正态分布作为先验概率限制住, 设先验的高斯的均值为0, 方差为$\sigma^2$, 这个新引入的参数会影响MCMC的接受率, 最终我们采用的的$\Sigma^*,\mathbf{\mu}^*$为:
+为了使得我们的近似不会跑太远出现偏差, 用一个高斯分布作为先验概率限制住, 设先验的高斯的均值为0, 方差为$\sigma^2$, 这个新引入的参数会影响MCMC的接受率, 最终我们采用的的$\Sigma^*,\mathbf{\mu}^*$为:
 $$
 \Sigma^* = (\Sigma^{-1} + \frac{1}{\sigma^2})^{-1}, \mathbf{\mu}^*=\Sigma^*\Sigma^{-1}\mathbf{o}
 $$
@@ -646,7 +720,7 @@ MCMC状态转移的接受概率. Metropolis-Hastings算法的核心就是算状�
 $$
 a({\mathbf x}\rightarrow {\bf y}) = \min(1, \frac{f({\bf y})Q({\bf y}\rightarrow {\bf x})}{f({\bf x})Q({\bf x} \rightarrow {\bf y})}) = \min(1, \frac{f({\bf y})\Phi_{{\bf y}}( {\bf x} - {\bf y})}{f({\bf x})\Phi_{\bf x}( {\bf y} - {\bf x})})
 $$
-$\Phi_{\bf x}$是在$\bf x$点计算得出的$\Sigma^*, \bf \mu^*$定义的正态分布, 令$\bf  z = y-x$, $N$维向量, 有:
+$\Phi_{\bf x}$是在$\bf x$点计算得出的$\Sigma^*, \bf \mu^*$定义的高斯分布, 令$\bf  z = y-x$, $N$维向量, 有:
 $$
 \Phi_{\bf x}({\bf z}) = (2\pi)^{-\frac{N}{2}}\mid \Sigma_{\bf x}^{*}\mid^{\frac{1}{2}} \exp(-\frac{1}{2}({\bf z}-{\bf \mu}_{\bf x}^*)^T{\Sigma_{\bf x}^*}^{-1}({\bf z}-{\bf \mu_x^*}))
 $$
@@ -672,11 +746,13 @@ x_{n+1}= x_{n} - \frac{f'(x_n)}{f''(x_n)} \\
 $$
 所以要对这篇论文做一句话总结的话: 一种牛顿法.
 
+//H2MC 模拟的图片
 
-
-### *Path Integral
+## *Path Integral
 
 费曼研究生时发明了一种叫路径积分的东西， Path Tracing一类方法就是从这里来的， 我觉得很有意思， 写在这里。如果你能看懂讲旋转的[球谐笔记](https://zhuanlan.zhihu.com/p/140421707)的话，下面内容也不会太难。写这个主要是，前面讲了Path Tracing，Hamiltonian, 概率论， 那么来点量子力学把它们用到的东西搅在一块，毕竟量子力学是一种“概率”论，“装逼要装到深处”。
+
+//TODO: quantum field theory in a nutshell
 
 ![path integral](C:\Users\l\Desktop\notebook\notebooks\lecture_notes\images\path_integral_arrows.png)
 
