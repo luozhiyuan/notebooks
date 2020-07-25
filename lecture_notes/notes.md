@@ -4,7 +4,7 @@
 
 [本文有种怎么写也写不完的无力感, 有些内容比较主观, 请读者自斟; 同时水平和精力有限, 错漏之处, 也烦请读者指正]
 
-日常搬砖没有什么特别有意思的东西可以分享，但我不想浪费这次机会，这篇年度最佳的论文[differentiable visual computing](https://people.csail.mit.edu/tzumao/phdthesis/phdthesis.pdf)，至少对于我没见过机器学习的人来说，这类从未见过的方法，刷新了我的认知，觉得很有意思，所以就拿来分享给和我一样不懂机器学习和渲染的初学者。本文提到的一些按我自己理解写的源码可在我的[notebook](https://github.com/luozhiyuan/notebooks)中浏览(包含了目录中AD, MC, MCMC, HMC, H2MC等内容的演示代码)。
+日常搬砖没有什么特别有意思的东西可以分享，但我不想浪费这次机会，这篇年度最佳的论文[differentiable visual computing](https://people.csail.mit.edu/tzumao/phdthesis/phdthesis.pdf)，至少对于我没见过机器学习的人来说，这类从未见过的方法，刷新了我的认知，觉得很有意思，所以就拿来分享给和我一样不懂机器学习和渲染的初学者。本文提到的一些按我自己理解写的源码可在我的[notebook](https://github.com/luozhiyuan/notebooks)中浏览(包含了目录中AD, MC, MCMC, HMC, H2MC等内容的演示代码-由于不会Python, 暂时用C++写了)。
 
 这里的内容称为Graphics是不太合适的, 并没有包含物理模拟等内容, 如果想更多地了解Differentiable Graphics的内容, 可以继续参考[DiffTaiChi](https://arxiv.org/abs/1910.00935), 也是非常有意思的工作. 另一方面, 有很多基础知识还是有相通之处的, 只是应用场景的不同而导致一些领域知识的差异.
 
@@ -32,6 +32,8 @@
 
 9. *Path Integral
 
+10. The End
+
 ## Automatic Differentiation
 
 假设我们都学过微积分， 那里面的内容大致可以分为微分和积分，这里介绍的是一种自动微分方法。
@@ -50,7 +52,7 @@ $$
 
 符号运算的话如下图让计算机根据微分法则（乘法法则和链式法则），查微分表。
 
-<img src="images\xysinyz.png" alt="xysinyz" style="zoom: 33%;" />
+<img src="./images/xysinyz.png" alt="xysinyz" style="zoom: 33%;" />
 
 数值方法的话就是利用定义让计算机去求极限：
 $$
@@ -105,7 +107,7 @@ $$
 
 我们计算一元函数$f(x)=x\sin(x^2)$在$x=3$处的一阶导。这个函数的计算图（computation graph）如下：
 
-![fcarc-december2017-function-graph-1](images\fcarc-december2017-function-graph-1.jpg)
+![fcarc-december2017-function-graph-1](./images/fcarc-december2017-function-graph-1.jpg)
 
 由$f(3+\epsilon) = f(3) + f'(3)\epsilon$，我们可以算出$f'(3)$。
 $$
@@ -126,7 +128,7 @@ f'(3) &= \sin(9) + 18\cos(9)
 $$
 对于多元函数，我们同样可以算出偏导。比如对于$f(x,y,z)$， 我们可以用$f(x+\epsilon \bold{e_1},y+\epsilon \bold{e_2},z+\epsilon \bold{e_3})$求得梯度$[\partial f/\partial x,\partial f/\partial y,\partial f/\partial z]$。以$f(x,y,z)=xy\sin(yz)$在$(x,y,z)=(3,-1,2)$处的导数为例。该函数的计算图为
 
-![fcarc-december2017-function-graph-2](images\fcarc-december2017-function-graph-2.jpg)
+![fcarc-december2017-function-graph-2](./images/fcarc-december2017-function-graph-2.jpg)
 $$
 \begin{align}
 x &= 3+\epsilon[1,0,0]\\
@@ -193,7 +195,7 @@ $$
 
 以上面$f(x,y,z)=xy\sin(yz)$为例，把中间变量前向（从下到上）算一遍得出这些中间变量的值$(x,y,z,t,u,v,w)$：
 
-![fcarc-december2017-function-graph-3](images\fcarc-december2017-function-graph-3.jpg)
+![fcarc-december2017-function-graph-3](./images/fcarc-december2017-function-graph-3.jpg)
 
 接下来我们引入伴随变量(adjoint variables)从上到下，反回来记录顶端节点对下面节点的偏导数（乘法法则与加法法则）：
 $$
@@ -268,7 +270,7 @@ $$
 
 我们先偷看下真实的函数图像（ground truth）：
 
-![xx_yy](images\xx_yy.png)
+![xx_yy](.\images\xx_yy.png)
 
 蒙特卡洛积分:
 
@@ -296,7 +298,7 @@ rejection method
 
 ## Markov Chain
 
-简单来说就是我们的状态以一定的概率在状态空间中随机游走. 不考虑太长的历史,转移到当前状态的概率$P(x\rightarrow y)$只与上一个状态有关. 我们以离散马尔科夫链为例:
+简单来说就是我们的状态以一定的概率在状态空间中随机游走. 不考虑太长的历史,转移到当前状态的概率$P(x\rightarrow y)$(我们用$\rightarrow$来表示条件概率, 状态的转移更加明确, 等价于$P(y\vert x)$)只与上一个状态有关. 我们以离散马尔科夫链为例:
 
 ```mermaid
 stateDiagram
@@ -338,7 +340,7 @@ $$
 $$
 这个转移概率是我们给它注入的先验知识, 就像小孩子的天赋一样, 他先天知道一些知识和思维方法, 那学起来肯定会比别人快一些. 如果我们的先验的知识能让他往正确的方向跑, 那它即使没赢在起跑线上了(起始状态概率很低, 离高分布区域很远), 那也能加倍赶上. 我们没法用无穷多的采样数, 但在(一开始未知的)概率高的区域能增加(有效)采样数, 这能使我们收敛得更快.
 
-这种注入先验转移概率, 给予足够的时间让他稳定下来的方法, 就是Markov Chain Monte Carlo(MCMC).
+这种注入先验转移概率, 给予足够的时间让他稳定下来的方法, 就是Markov Chain Monte Carlo(MCMC). MCMC最终收敛的结果是与我们目标函数成正比的一个分布, 这里我们先等同之, MLT中再来介绍下一些预热处理(boostrap).
 
 ### Metropolis-Hastings
 
@@ -360,21 +362,124 @@ $$
 
 ### Hamiltonian Monte Carlo
 
-前面我们提到我们要给我们的概率世界注入先验知识, 同样, 在我们探索世界的过程中, 发展出了物理学, 而物理学非常成功的描绘了真实世界的图景. 自然, 我们可以把物理学里的探索方法(运动位移), 引入到概率世界的探索(状态迁移)中来.
+前面我们提到我们要给我们的概率世界注入先验知识, 同样, 在我们探索世界的过程中, 发展出了物理学, 而物理学非常成功的描绘了真实世界的图景. 自然, 我们可以把物理学里的探索方法(运动位移), 引入到概率世界的探索(状态迁移)中来. 这里主要参考了两篇文章[MCMC using Hamiltonian Dynamics]() 和 [A conceptual introduction to hamiltonian monte carlo]().
 
-物理中有两个基本量: 动量($p=mv$)与位置($q$). $(q,p)$这两个定义了一个相空间的坐标(phase space), 我们引入可以改变$q$的动量, $\pi(q,p)$在位置轴$q$上的投影就是我们的目标分布$\pi(q)$:
+我们将要提到的HMC方法, 简明直观的解释是将我们的目标函数(比如一个钟形曲线, 或者是一个倒扣的碗)取$-\log$(基本上就是倒过来了一下, 抹平了一点), 然后我们随机一个坐标和速度, 模拟物理过程, 比如我们在这个曲线上放个小球(当前状态), 随机一个初始速度(动量), 同时在重力作用下, 过一段时间它会跑到另一个地方(就是我们马尔科夫过程里的下一个可能的状态(proposal state)), 我们用Metropolis的算法框架算一个接受率, 以一定概率接受这个新的采样点. 直观上, 这个小球由于重力作用, 很可能停在比较凹陷的地方, 记住我们取了$-\log$, 比较凹陷的地方就是我们原始函数比较凸出的地方. 如下图,
+
+这是原始的目标函数:
+
+<img src=".\images\hmc1d_original.png" alt="image-20200721223307734" style="zoom:50%;" />
+
+下图是取$-\log$之后的函数, 我们随机到x0点然后随机给个初始速度u(含方向), 模拟一下质点运动, 过一段时间之后, 它会停留在一个点比如x1, 接着随机一个初始速度(含方向), 接下来可能会停留在别的点, 由于初始速度的随机性, 它保证了马尔科夫链的ergodicity(遍历所有状态), 同时由于物理规律的影响, 他能让采样点集中到比较低的地方, 但原始函数比较高的地方或"体积"比较大的区域.
+
+<img src=".\images\hmc1d_log.png" alt="image-20200721222940120" style="zoom:50%;" />
+
+哈密尔顿力学系统作用在位置和动量上, 这个系统用一个叫哈密尔顿量的函数表示$H(q,p)$. 这个量指征了系统的状态, 比如像氢原子能级之类的.
+
+物理中的两个基本量: 动量($p=mv$)与位置($q$). $(q,p)$这两个定义了一个相空间的坐标(phase space), 我们引入可以改变$q$的动量, $\pi(q,p)$在位置轴$q$上的投影就是我们的目标分布$\pi(q)$其定义为:
 $$
 \pi(q,p)=e^{-H(q,p)} \in (0,1)
 $$
-(参考Boltzmann distribution: $\pi(state) \propto \exp(E/(kT))$, $E$为能量, $T$为温度, 描述了粒子在能量为$E$, 温度为$T$的情况下处于状态$state$的分布).
+(参考Boltzmann distribution: $\pi(state) \propto \exp(E/(kT))$, $E$为能量, $T$为温度, 描述了一个热力学系统在能量为$E$, 温度为$T$的情况下处于状态$state$的分布).
 
-这里插点题外话,  哈密尔顿力学非常重要, 哈密尔顿方程的特性在数学上,物理上, 信息学等不同领域都有不同的意义. 比如在量子力学统计诠释中, 在测量之前我们无法得知精确的位置, 粒子的位置是符合一个概率分布的(期望是$\langle q\rangle$), 而这个分布在无穷远处(后面我们会看到$H\rightarrow \infty$)的概率为0, 这个分布基本上可以直接映射到我们的$\pi(q)$.
 
-$H$为定义在相空间上的函数, 如果高维的理解起来有些困难, 看的时候不妨把他假设成一维的, 那样$H$就是个二元函数.
+
+这里插点题外话,  哈密尔顿力学非常重要, 哈密尔顿方程的特性在数学上,物理上, 信息学等不同领域都有不同的意义. 比如在量子力学统计诠释中, 在测量之前我们无法得知精确的位置, 粒子的位置是符合一个概率分布的(期望是$\langle q\rangle$), 而这个分布在无穷远处(后面我们会看到$H\rightarrow \infty$)的概率为0, 这个分布基本上可以直接映射到我们的$\pi(q)$, 而哈密尔顿力学系统对粒子的作用就是把粒子位置的概率分布做一个变换, 这个变换需要保持一些特性: 比如维持海森堡测不准的度量, 最开始位置可能会在$q\pm\delta$的区间内, 作用后仍然在一个$q'\pm\delta$的范围内, $q,q'$是前后两个位置的期望.
+
+$H$为定义在相空间上的函数, 如果高维的理解起来有些困难, 看的时候不妨把他假设成一维的, 那样$H$就是个二元函数, 而这个方法的核心就是利用了相空间的一些几何特性. 这里后面对位置和动量($q,p$)不怎么区分一维和多维, 多维的情况就是把每一维的分量代到公式里.
+$$
+H(q,p)=-\log\pi(q,p) = -\log(\pi(p\vert q)\pi(q)) = -\log(\pi(p\vert q)) - \log(\pi(q)) \\
+= K(p,q) + V(q)
+$$
+Boltzmann  distribution里面$E$是能量, 令$kT=1$. $E$为动能加上势能. 这里我们把$K(p,q)$作为动能部分, $V(q)$作为势能部分(仅与位置有关). 我们在样本集合中(这里没给出typical set的定义,  大致是概率密度$\times$占的地方 大的区域(体积))采样过程中, 为了让我们的采样点尽可能多地落在更有效的区域(typical set), 我们的马尔科夫过程需要遵守物理法则:
+$$
+\frac{dq}{dt} = \frac{\part H}{\part p} = \frac{\part K}{\part p}\\
+\frac{dp}{dt} = -\frac{\part H}{\part q}=-\frac{\part K}{\part q} - \frac{\part V}{\part q}
+$$
+第一个方程可以这么理解:  $dq/dt$就是位置变化率, 就是速度, $K$ 是动能$mv^2/2$, 对$mv$求导(质量$m$是常数)就是对$v$求导, 得到的也是速度$v$.
+
+第二个方程也比较容易理解: 看$dp/dt$的物理意义. 我们的质量$m$不会随时间变化, 那么$dp/dt = mdv/dt=ma$, 我记得高中里学过力$F=ma$, 我用力$F$将我们的粒子移动一小段距离$dq$, 做的功就是它能量的变化$dE$, 即$F dq = -dE$, 我不用说你也知道我们的能量就是哈密尔顿量, 即$Fdq = -dH$, 用偏导的形式$F\part q=-\part H$, 从而有$(dp/dt) = ma = F = -\part H/\part q$.
+
+以上就是我们的哈密尔顿方程. 我们还可以在相空间来理解一下, 设相空间的向量$z=(q,p)$, $q,p$各为d维向量, 我们的哈密尔顿方程就是:
+$$
+\frac{dq_i}{dt} = \frac{\part H}{\part p_i} \\
+\frac{dp_i}{dt} = -\frac{\part H}{\part q_i} \\
+
+\frac{dz}{dt} = J \nabla H(z)
+$$
+其中$i=1,...,d$, $\nabla H$为$H$的梯度, 
+$$
+J = 
+\begin{pmatrix}
+0_{d\times d} & I_{d \times d} \\
+-I_{d \times d} & 0_{d\times d}
+\end{pmatrix}
+$$
+其中$\mid J\mid = 1, J^T = -J$, 我们称这样的矩阵为辛矩阵($Symplectic\space Matrix$, 我们的相空间与辛几何有一定的联系). 从上面这些式子我们能得到两个非常重要的特性使之能用于马尔科夫过程:
+
+1. 时间可逆(Time Reversibility). 对于哈密尔顿动力系统(Hamiltonian dynamics), 我们在时间$t$的在相空间的坐标为$(q(t), p(t))$, 经过时间 $d$, 我们的新坐标为$(q(t+d), p(t+d))$, 这个系统经过时间$d$将就任意坐标演化(映射)到新坐标, 设这个映射为$T_d$ , 这是个一对一的映射, 存在一个逆映射: $T_{-d}$, 使得$T_{-d}(q(t+d), p(t+d))=(q(t), p(t))$. 这个就是物理学里的决定论思维, 当前所有的状态, 都是由上一个状态决定的, 时间之矢反过来也一样. 马尔科夫过程中可以利用这个特性, 我们用当前状态得到下一个待定状态(proposal state)时, 并不改变原来的分布, 因为这个待定状态照样可以回来.
+2. 哈密尔顿量守恒(Conservation). 简单说法就是能量守恒, 通过计算可以验证$ dH/dt = 0$.
+3. 相空间体积不变(Volume Conservation). 如果相空间的点集围成一个区域, 随着时间变化, 每个点$(q,p)$可能会改变在相空间中的位置, 但他们围成的体积不随时间改变. 有点像不可压缩的流体(散度也是0), 怎么揉捏, 体积都不会变.  
+4. $J$是辛矩阵. 这个就牵扯到辛几何了, 这我还没学过.
+
+数值微分方程有很多方法, 比如我们要知道$t$时间之后,我们的动量和位置到哪了, 就每步给个微小的步长$dt=\epsilon$, 然后代入到方程中, 算下一个点, 做n步之后停止($n\times dt=t$). 其中有一类叫做Symplectic Integrator, 能很好的保持相空间的体积, 保持我们的哈密尔顿系统中的守恒量. 一般都会提到一个叫$leap\space frog$的迭代方法(先走半步看看):
+$$
+p(t+\epsilon/2) = p(t)-(\epsilon/2)\frac{\part U}{\part q}(q(t)) \\
+q_i(t+\epsilon)=q(t)+\epsilon\frac{p(t+\epsilon/2)}{m}\\
+p(t+\epsilon)=p(t+\epsilon/2)-(\epsilon/2)\frac{\part U}{\part q}(q(t+\epsilon))
+$$
+$m$为质量, 我们可以令其为1(多维的话就是个对角矩阵).  喜欢看代码的可以看这个:
+
+<img src="./images/leap_frog.png" alt="image-20200722231543990" style="zoom: 50%;" />
+
+我们的实现要做的就是在当前位置状态$q$, 随机一个$p$, 然后用上述积分一定时间得到新的$q$, 求出新的状态的值, 来代入到Metropolis-Hastings框架中. 这里我们会遇到一个状态转移的问题. 我们怎么定义Hastings Term ?
+
+设我们在哈密尔顿系统里的初始的状态是$(q_0, p_0)$, 经过一段时间之后我们转移到了状态$(q_L, p_L)$:
+$$
+Q((q_0,p_0)\rightarrow(q',p'))=Q(q', p'|q_0,p_0)=\delta(q'-q_L) \delta(p'-p_L)
+$$
+由决定论观点, 初始状态就唯一决定了之后的任意一个状态, 所以只能到达$(q_L,p_L)$点, $Q((q_0,p_0)\rightarrow(q_L,p_L))=1$. 那么问题来了, 我们的Hastings Term:
+$$
+\frac{Q((q_L,p_L)\rightarrow (q_0,p_0))}{Q((q_0,p_0)\rightarrow(q_L, p_L))}=\frac{0}{1}
+$$
+这使得我们的接受率(acceptance probability)始终接受(拒绝)的状态, 在概率上始终往一个方向走, 马尔科夫链的遍历性(egodicity)就破坏了:
+
+<img src=".\images\hmc_reversibility_0.png" alt="image-20200723081946439" style="zoom:50%;" />
+
+我觉得这里最机智的是对于上面的问题的处理, 利用Hamiltonian Dynamics System的时间可逆性将终态的时间箭头反一下, 也不违背任何东西. 把速度方向反一下, $H(q,p)$仍然不变(动能=$p^2/(2m)$):
+$$
+(q_0,p_0)\rightarrow (q_L,-p_L) \\
+Q((q_0,p_0)\rightarrow (q',p'))=\delta(q'-q_L)\delta(p'+p_L)
+$$
+如下图来回都是1.
+
+<img src=".\images\hmc_reversibility_1.png" alt="image-20200723083239312" style="zoom:50%;" />
+
+接受概率为:
+$$
+\begin{align}
+a((q_0,p_0)\rightarrow (q_L,-p_L)) &= \min(1, \frac{Q((q_L,-p_L)\rightarrow(q_0,p_0))\pi(q_L,-p_L)}{Q((q_0,p_0)\rightarrow(q_L,-p_L))\pi(q_0,p_0)}\\
+&= \min(1, \frac{\delta(q_L-q_L)\delta(-p_L+p_L)\pi(q_L, -p_L)}{\delta(q_0-q_0)\delta(p_0-p_0)\pi(q_0,p_0)}) \\
+&= \min(1, \frac{\pi(q_L,-p_L)}{\pi(q_0,p_0)}) \\
+&= \min(1, \frac{\exp(-H(q_L,-p_L))}{\exp(-H(q_0,p_0))}) \\
+&= \min(1, \exp({-H(q_L,-p_L)+H(q_0,p_0)}))
+\end{align}
+$$
+
+$H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,把m设为1, $p$满足一种分布比如(高斯分布), 代入进去就能求出接受概率$a$.
 
 //HMC 图片
 
 ## Path tracing and bidirectional path tracing
+
+真实感渲染要解决的问题就是: 怎么模拟光源点亮场景将满场景的光能糊我脸上. 
+一种是radiosity(直观感受就是lightmap): 场景物体上每个(无穷小)面元(surfel)上都存下从场景里接收到的光能(irradiance), 摄像机观察的时候直接就知道他受到了多少辐射. 所以这是与视角无关的一种方法, 但需要存光能.
+一种是从raytracing: 摄像机发生光线, 在场景里反复弹射几次, 看看能不能照到光源, 由于光路可逆, 就等于有没有光从光源射到摄像机上, 如果有的话, 那探测到的光能就对看到的图像就有贡献了. 射不到的远方, 哪管他洪水滔天, 所以这是一种视角相关的方法, 摄像机动一动, 你得重来一遍.
+数学上要搞对这些东西还是有点麻烦的, 得推敲好多公式. 这方面资料非常丰富且宽泛, 可自行google: light transport equation. 我暂时舍弃这块内容的讨论:大致就是需要保证概率上的正确性, 以及更有效率地monte carlo估计累加.
+我们用最简单的pathtracing作为例子. 这是最简单易操作的实现.
+在开始pathtracing之前, 我们需要定义一下场景里的物体是如何与光线作用的.brdf
+...
+tracing的过程
 
 ## Metropolis light transport
 
@@ -799,3 +904,11 @@ $$
 $$
 e^{-i\hat{H}\cdot (t-t_i)} = e^{-i\hat{H}\Delta t}e^{-i\hat{H}\Delta t}...e^{-i\hat{H}\Delta t}
 $$
+
+# The End
+
+总结一下: 我们主要讲了牛顿法梯度下降求最值, 然后用了一种自动微分的技术. 这种方法在图形学渲染(forward rendering/inverse rendering)的应用.
+
+这辈子大概考完研就没用到过这种数学, 但数学中很多东西是美的. 对于美的东西, 如果没有条件去追求, 那我们也可以打开电脑, 和两位五姑娘一起共度良宵. 毕竟现在互联网这么发达, 我们回家之后不用偷偷去看一些书籍, 而可以直接从网上就可以获取各种很美让人很爽的资源了.
+
+题外: 很多东西是每天一两句凑起来的, 所以有很多不一致. 晚上写这个也容易失眠, 主要是仔细看看想想发现这些东西还是可以理解的, 以前睡前喜欢想个数学题, 一般没想出来就睡着了, 几个星期都没思路. 而这里提到的东西晚上睡觉想想有时候会突然明白, 很兴奋睡不着, 也试过早起, 但一般刚热乎起来就要去上班了. 
