@@ -3,4 +3,4 @@
 
 using namespace std::chrono_literals;
 
-constexpr auto kTestTime = 5000ms;
+constexpr auto kTestTime = 1000ms;

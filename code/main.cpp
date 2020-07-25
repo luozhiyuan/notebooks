@@ -24,7 +24,7 @@ void GroundTruth(int w, int h, int components, float plotRadius, unsigned char* 
 		for(int j = 0; j < w; j++)
 		{
 			float x = (float(j)/w - 0.5f) * plotRadius;
-			unsigned char value =  render(x, y) * 255;
+			unsigned char value =  static_cast<unsigned char>(render(x, y) * 255);
 			data[(i * w + j ) * components] = value;
 		}
 	}
@@ -81,7 +81,7 @@ void MonteCarloInverse(int w, int h, int components, float plotRadius, unsigned 
 
 	for(int i = 0; i < size; i++)
 	{
-		data[i] = std::min(255.0, accumulated_data[i] * double(size)/double(total_samples));
+		data[i] = static_cast<unsigned char>(std::min(255.0, accumulated_data[i] * double(size)/double(total_samples)));
 	}
 
 	delete [] cdf;
@@ -98,7 +98,7 @@ void MonteCarloRejection(int w, int h, int components, float plotRadius, unsigne
 	::memset(accumulated_data, 0, sizeof(double) * size);
 
 	int total_sample_count = 0;
-	double zeta1, zeta2;
+	float zeta1, zeta2;
 	auto duration = TimedOperation(kTestTime, [&]() {
 		int one_iteration_count = size;
 		while (one_iteration_count-- > 0) {
@@ -118,7 +118,7 @@ void MonteCarloRejection(int w, int h, int components, float plotRadius, unsigne
 
 	for(int i = 0; i < size; i++)
 	{
-		data[i] = (255 * std::min(1.0, accumulated_data[i] / (double(total_sample_count)/double(size))));
+		data[i] = static_cast<unsigned char>(255 * std::min(1.0, accumulated_data[i] / (double(total_sample_count)/double(size))));
 	}
 
 	delete[] accumulated_data;
@@ -164,7 +164,7 @@ void MetropolisMCMC(int w, int h, int components, float plotRadius, unsigned cha
 	::memset(accumulated, 0, sizeof(double) * w*h*components);
 
 	int total_sample_count = 0;
-	TimedOperation(kTestTime, [&]()
+	auto duration = TimedOperation(kTestTime, [&]()
 	{
 		int batch_size = w*h;
 		while (batch_size-- > 0)
@@ -200,9 +200,10 @@ void MetropolisMCMC(int w, int h, int components, float plotRadius, unsigned cha
 	);
 	for (int i = 0; i < w*h*components; i++)
 	{
-		data[i] = 255 * std::min(1.0, accumulated[i] / (double(total_sample_count) / double(w*h)));
+		data[i] = static_cast<unsigned char>(255 * std::min(1.0, accumulated[i] / (double(total_sample_count) / double(w*h))));
 	}
 	delete[] accumulated;
+	std::cout << "MetropolisMCMC real time: " << duration.count() << "ms" << std::endl;
 }
 
 int main()
@@ -214,6 +215,6 @@ int main()
 	SaveResult("xx_yy_mc_inverse.png", w, h, plotRadius, MonteCarloInverse);
 	SaveResult("xx_yy_mc_rejection.png", w, h, plotRadius, MonteCarloRejection);
 	SaveResult("xx_yy_mc_metropolis.png", w, h, plotRadius, MetropolisMCMC);
-	//SaveResult("xx_yy_hmc.png", w, h, plotRadius, TestHMC);
-	//SaveResult("xx_yy_h2mc.png", w, h, plotRadius, TestHessianHamiltonMC);
+	SaveResult("xx_yy_hmc.png", w, h, plotRadius, TestHMC);
+	SaveResult("xx_yy_h2mc.png", w, h, plotRadius, TestHessianHamiltonMC);
 }

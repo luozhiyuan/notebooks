@@ -10,12 +10,14 @@ class SimpleURNG
 public:
 	SimpleURNG(const SimpleURNG&) = delete;
 	SimpleURNG() :mt(r()) {}
-	void Get1D(double* zeta)
+	template<typename F>
+	void Get1D(F* zeta)
 	{
-		*zeta = std::generate_canonical<double, std::numeric_limits<double>::digits>(mt);
+		*zeta = std::generate_canonical<F, std::numeric_limits<F>::digits>(mt);
 	}
 
-	void Get2D(double* zeta0, double* zeta1)
+	template<typename F>
+	void Get2D(F* zeta0, F* zeta1)
 	{
 		Get1D(zeta0);
 		Get1D(zeta1);
@@ -38,11 +40,12 @@ public:
 			nds[i] = std::normal_distribution<double>(0, 1);
 		}
 	}
-	void Get(std::array<double, Dim>* zeta)
+	template<typename F>
+	void Get(std::array<F, Dim>* zeta)
 	{
 		for (size_t i = 0; i < zeta->size(); i++)
 		{
-			(*zeta)[i] = (nds[i])(mt);
+			(*zeta)[i] = static_cast<F>((nds[i])(mt));
 		}
 	}
 };
