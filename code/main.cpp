@@ -217,4 +217,8 @@ int main()
 	SaveResult("xx_yy_mc_metropolis.png", w, h, plotRadius, MetropolisMCMC);
 	SaveResult("xx_yy_hmc.png", w, h, plotRadius, TestHMC);
 	SaveResult("xx_yy_h2mc.png", w, h, plotRadius, TestHessianHamiltonMC);
+
+	char pause;
+	std::cin>>pause;
+	return 0;
 }

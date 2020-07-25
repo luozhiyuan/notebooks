@@ -326,15 +326,40 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 {
 	TargetDist u;
 
-	Float boostrap_total = 0;
-	const int boostrap_count = w * h;
-	for (int i = 0; i < boostrap_count; i++) {
-		Float zeta1, zeta2;
-		rng.Get2D(&zeta1, &zeta2);
-		boostrap_total += u.f(static_cast<Float>(plotRadius * (zeta1 - 0.5)), static_cast<Float>(plotRadius * (zeta2 - 0.5)));
+	Float normalization;
+	int boostrap_count = w * h;
+	//算法本身是无偏的, 但可惜, MCMC只能得到一个与真实期望一致的结果(正比)
+	const bool reality = false;
+	if(reality)
+	{
+		//boostrap may introduce bais
+		Float boostrap_total = 0;
+		for (int i = 0; i < boostrap_count; i++) {
+			Float zeta1, zeta2;
+			rng.Get2D(&zeta1, &zeta2);
+			boostrap_total += u.f(static_cast<Float>(plotRadius * (zeta1 - 0.5)), static_cast<Float>(plotRadius * (zeta2 - 0.5)));
+		}
+		normalization = boostrap_total / boostrap_count;
 	}
-	
-	Float normalization = boostrap_total / boostrap_count;
+	else
+	{
+		//cheating here try to get unbaised result
+		Float boostrap_total = 0;
+		boostrap_count = 0;
+		for(int y= 0; y < h; y++)
+		{
+			for(int x = 0; x < w; x++)
+			{
+				Float zeta1, zeta2;
+				zeta1 = Float(x)/Float(w);
+				zeta2 = Float(y)/Float(h);
+				boostrap_total += u.f(static_cast<Float>(plotRadius * (zeta1 - 0.5)), static_cast<Float>(plotRadius * (zeta2 - 0.5)));
+				boostrap_count ++;
+			}
+		}
+		normalization = boostrap_total / Float(boostrap_count);
+	}
+
 	
 	Float target_accept_rate = 0.8f;//adaptive
 	std::array<Float, 2> q;
@@ -343,67 +368,75 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 	q[0] = static_cast<Float>(plotRadius * (zeta1 - 0.5));
 	q[1] = static_cast<Float>(plotRadius * (zeta2 - 0.5));
 
-	Float* accept_count = new Float[w*h*components];
-	::memset(accept_count, 0, sizeof(Float) * w * h);
+	Float* accept_accumulation = new Float[w*h*components];
+	::memset(accept_accumulation, 0, sizeof(Float) * w * h * components);
 
 	Float total_count = 0;
 	Float total_accept = 0;
 
-	H2MCParam h2mc_parameters;
+	H2MCParam h2mc_parameters(Float(1));
 	RNG std_rng;
 
-	std::uniform_real_distribution<Float> uniDist(Float(0.0), Float(1.0));
+	std::uniform_real_distribution<Float> uniform_distribution(Float(0.0), Float(1.0));
 	//initialize q
 	MarkovState state;
 	MarkovState proposal_state;
 	InitializeState(&state, u, h2mc_parameters, q);
 	auto real_time = TimedOperation(kTestTime, [&]()
 	{
-		auto current_state = state;
-		Float accept = H2MC(u, plotRadius, h2mc_parameters, current_state, &proposal_state, std_rng);
-		bool accepted = uniDist(std_rng) < accept;
-		int x;
-		int y;
-		if (accepted) {
-			q = proposal_state.q;
-		}
-		else
+		int batch_size = w*h;
+		while(batch_size -- > 0 )
 		{
-			q = current_state.q;
-		}
-		x = (int)((q[0] / plotRadius + 0.5) * w);
-		y = int((q[1] / plotRadius + 0.5)* h);
-
-		if (x >= 0 && y >= 0 && x < w && y < h)
-		{
-			if (accepted)
+			auto current_state = state;
+			Float accept_probability = H2MC(u, plotRadius, h2mc_parameters, current_state, &proposal_state, std_rng);
+			bool accepted = uniform_distribution(std_rng) < accept_probability;
+			int x;
+			int y;
+			if (accepted) {
+				q = proposal_state.q;
+			}
+			else
 			{
-				state = proposal_state;
+				q = current_state.q;
+			}
+			x = (int)((q[0] / plotRadius + 0.5) * w);
+			y = (int)((q[1] / plotRadius + 0.5)* h);
+
+			if (x >= 0 && y >= 0 && x < w && y < h)
+			{
+				if (accepted)
+				{
+					accept_accumulation[y * w + x] += normalization * accept_probability;
+					state = proposal_state;
+				}
+				else
+				{
+					accept_accumulation[y * w + x] += normalization * (1-accept_probability);
+					state = current_state;
+				}
 			}
 			else
 			{
 				state = current_state;
 			}
-			accept_count[y * w + x] += normalization;
-		}
-		else
-		{
-			state = current_state;
-		}
-		total_count++;
-		if (accepted)
-			total_accept++;
-		if (total_accept / total_count < target_accept_rate) {
+			total_count++;
+			if (accepted)
+				total_accept++;
+			if (total_accept / total_count < target_accept_rate)  //try adaptive
+			{
+				//narrow down the gaussian
+				h2mc_parameters.sigma *= 0.9f;
+			}
 		}
 	});
 
 	for (int i = 0; i < w*h; i++) 
 	{
-		data[i*components] = (unsigned char)(255 * std::min(accept_count[i] * boostrap_count/total_count, static_cast<Float>(1.0)) );
+		data[i*components] = (unsigned char)(255 * std::min(accept_accumulation[i] * boostrap_count/total_count, static_cast<Float>(1.0)) );
 	}
-	delete[]accept_count;
+	delete[]accept_accumulation;
 
-	std::cout << "HessianHamiltonianMC cost: " << real_time.count() << "ms " << "with accpet rate: " << total_accept / total_count << std::endl;
+	std::cout << "HessianHamiltonianMC cost: " << real_time.count() << "ms " << "with accpet rate: " << total_accept / total_count << "boostrap_count/total_count: " << boostrap_count/total_count << std::endl;
 }
 
 
