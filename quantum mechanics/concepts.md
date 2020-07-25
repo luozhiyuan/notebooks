@@ -52,8 +52,11 @@ $$
 
 ## Position and Momentum Operators
 
-物理学里有两个基本可观测量:位置(position: $x$), 动量(momentum: $p$). 对应的两个算符分别为$\hat x$和$\hat p$.
-
-
+物理学里有两个基本可观测量:位置(position: $x$), 动量(momentum: $p$). 对应的两个算符分别为$\hat x$和$\hat p$, 对应的特征值分别为$x$和$p$. 也就是说对于我们的粒子状态$\psi$:
+$$
+\hat x \vert \psi \rangle = x\vert\psi \rangle\\
+\hat p \vert \psi \rangle = p \vert \psi \rangle
+$$
+考虑一维的情况, $x$为直线上的坐标, 我们在坐标$x_0$找到这个粒子的概率为$\mid f(x_0)\mid^2$, 我们的位置状态由本征态的线性组合而成: $\vert \psi \rangle= \sum f(x_i) \vert x_i\rangle = \int_{-\infty}^{+\infty} f(x)dx$, 
 
 测不准原理:
