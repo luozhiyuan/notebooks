@@ -288,7 +288,7 @@ I\simeq \frac{b-a}{N}\sum_{i=1}^{N} f(x_i)
 $$
 或者,可以这样理解, 在$[a,b]$上, $N \rightarrow \infty$个采样点的平均值趋向于$f$的平均值, 积分就是求面积, 所以面积=区间大小$\times$均值.
 
-[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫Inversion Method; 一种叫Rejection Sampling.
+[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫Inversion Method (Importance Sampling); 一种叫Rejection Sampling.
 
 以一个离散分布为例说明下Inversion Method这个方法:设有四个状态, 处于每种状态的概率各是$p(x_i), \sum_{i=1}^4 p(x_i)=1$. PDF(probability density function) $p(x)$如下图:
 
@@ -567,16 +567,22 @@ $H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,
 
 我们用最简单的pathtracing作为例子. 这是最简单易操作的实现.
 
-在开始pathtracing之前, 我们需要定义一下场景里的物体是如何与光线作用的.brdf
+在开始pathtracing之前, 我们需要定义一下场景里的物体是如何与光线作用的.
+
+//TODO
+
+brdf
 ...
 
 tracing的过程
+
+Bidirectional Path Tracing, MIS
 
 ## Metropolis light transport
 
 10多年前看过一个叫Eric Veach的人的博士论文(90年代的论文), 感觉就两个字: 懵逼. MLT不仅看不懂, 实现上也无从入手, 这家伙还凭借path tracing方面的研究得了奥斯卡. 如今看了新版的PBR内容, 了解到原版的MLT比较难实现, 后面有人提了个非常简单的算法(PSSMLT), 这里抄的正是这种.
 
-
+//TODO
 
 ## Differentiable rendering
 
