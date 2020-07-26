@@ -50,6 +50,11 @@ $$
 $$
 我们把$\hat H, \vert | \rangle, \vert -\rangle$的矩阵和向量代入可得: $\hat H \vert | \rangle = 1 \vert | \rangle, \hat H\vert-\rangle = -1 \vert - \rangle$, 我们的特征值为1和-1, 我们对光偏振方向的测量结果如果为垂直的, 那么就对应特征值1, 水平则对应特征值-1.
 
+$$
+\sum \vert \lambda_i \rangle \langle \lambda_i \vert = I\\
+\hat H = \sum \lambda_i \vert \lambda_i \rangle \langle \lambda_i \vert
+$$
+
 ## Position and Momentum Operators
 
 物理学里有两个基本可观测量:位置(position: $x$), 动量(momentum: $p$). 对应的两个算符分别为$\hat x$和$\hat p$, 对应的特征值分别为$x$和$p$. 也就是说对于我们的粒子状态$\psi$:

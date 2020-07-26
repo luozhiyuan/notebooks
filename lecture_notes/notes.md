@@ -288,11 +288,38 @@ I\simeq \frac{b-a}{N}\sum_{i=1}^{N} f(x_i)
 $$
 或者,可以这样理解, 在$[a,b]$上, $N \rightarrow \infty$个采样点的平均值趋向于$f$的平均值, 积分就是求面积, 所以面积=区间大小$\times$均值.
 
-//pbr
+[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫Inversion Method; 一种叫Rejection Sampling.
 
-inversion method
+以一个离散分布为例说明下Inversion Method这个方法:设有四个状态, 处于每种状态的概率各是$p(x_i), \sum_{i=1}^4 p(x_i)=1$. PDF(probability density function) $p(x)$如下图:
 
-rejection method
+![discrete-pdf](.\images\discrete-pdf.svg)
+
+我们如下累加算出CDF(cumulated density function) $P(x)$:
+
+![discrete-cdf](.\images\discrete-cdf.svg)
+
+用均匀分布随机一个0到1的随机变量$\xi$,  算出CDF的反函数$P^{-1}$, 求$P^{-1}(\xi)$:
+
+![discrete-inversion](.\images\discrete-inversion.svg)
+
+我们以$p_i$的概率采样了$x_i$. 
+
+对任意PDF $p(x)$我们都可以用这个套路来做:
+
+1. 算出累加的分布CDF: $P(x)=\int_0^x p(x')dx'$
+2. 算CDF的反函数: $P^{-1}(x)$
+3.  均匀分布生成0到1的随机数: $\xi$
+4. 得到 $X_i=P^{-1}(\xi) $
+
+上面这个方法的缺点是需要提前知道分布. 
+
+还有一种有效的散弹枪方法, 称为Rejection Sampling. 这个方法比较暴力且可以用在任意函数上, 但前提是需要知道取值范围. 最经典的也简明直观的例子就是求$\pi$.
+
+
+
+![rejection-sample-circle](.\images\rejection-sample-circle.svg)
+
+如上图, 我们知道圆的面积与正方形的面积之比为$\pi/4$, $\pi$的数值并不清楚. 于是我们可以开始在正方形上均匀的打散弹枪. 只要打无穷多的点, 我们就可以知道精确的$\pi$值. 人生是有限的, 我们只能打有穷多的点, 数一数圆里面的点的数量, 与我们打的点的总数. 取个比值比如$r$, $r \simeq \pi/4, \pi \simeq 4r$. 我们就得到了一定精度的$\pi$.
 
 //montecarlo图片
 
@@ -356,9 +383,67 @@ $$
 $$
 a (q\rightarrow q') = \min(1, \frac{\pi(q')}{\pi(q)})
 $$
-//pbr 例子
 
-//MCMC 图片
+算法其实很简单, 如下:
+
+``` pseudocode
+X = X0
+for i = 1 to n
+    X' = mutate(X)
+    a = accept(X, X')
+    if (random() < a)
+        X = X'
+    record(X)
+```
+
+[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Metropolis_Sampling.html) 里提到了一种Expected Values Optimization, 避免浪费我们的采样:
+
+``` pseudocode
+X = X0
+for i = 1 to n
+    X' = mutate(X)
+    a = accept(X, X')
+    record(X, 1 - a)
+    record(X', a)
+    if (random() < a)
+        X = X'
+```
+
+[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Metropolis_Sampling.html)里有个一维的例子, 很形象的说明了MCMC的问题.
+
+设有一个函数:
+$$
+f(x) = 
+\left\{ 
+\begin{array}{ll}
+(x-0.5)^2 ,& 0\le x \le 1 \\
+0, & 其他
+\end{array} 
+\right.
+$$
+图像如下:
+
+![metro-func](.\images\metro-func.svg)
+
+一种mutate策略是完全随机的接受新的状态($mutate_1$),一种是对当前随机做一个微小的偏移然后将两个状态的采样结果对比, 随机接受新的状态($mutate_2$).
+
+还有一种混合策略就是以一定概率$p$按$mutate_1$随机跳转到下一个全新的状态, 称为 large step, 以一定概率$1-p$按$mutate_2$随机跳转到下一个微小的偏移, 称为small step. 以下对比了两种方法运行相同时间的结果:
+
+$mutate_1$:
+
+![metro-onestrategy](.\images\metro-onestrategy.svg)
+
+0.1的概率做large step, 0.9的概率做small step:
+
+![metro-bothstrategies](.\images\metro-bothstrategies.svg)
+
+马尔科夫链的一个问题是有的地方收敛得快, 有的地方收敛得慢. 还有些地方$\pi(q')/\pi(q)$很小, 就会卡在那卡很久. 如果不用large step跳出去, 而只用$mutate_1$, 就会出现如下图的情况, (a)是10000次迭代的结果, 而当300000次迭代之后才逃出去. MCMC虽然是无偏的, 但前提是无穷久的时间.
+
+![metro-10k-1mutate](.\images\metro-300k-1mutate.svg)
+
+![metro-300k-1mutate](.\images\metro-300k-1mutate.svg)
+
+//MCMC 图片对比
 
 ### Hamiltonian Monte Carlo
 
@@ -473,12 +558,18 @@ $H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,
 ## Path tracing and bidirectional path tracing
 
 真实感渲染要解决的问题就是: 怎么模拟光源点亮场景将满场景的光能糊我脸上. 
+
 一种是radiosity(直观感受就是lightmap): 场景物体上每个(无穷小)面元(surfel)上都存下从场景里接收到的光能(irradiance), 摄像机观察的时候直接就知道他受到了多少辐射. 所以这是与视角无关的一种方法, 但需要存光能.
+
 一种是从raytracing: 摄像机发生光线, 在场景里反复弹射几次, 看看能不能照到光源, 由于光路可逆, 就等于有没有光从光源射到摄像机上, 如果有的话, 那探测到的光能就对看到的图像就有贡献了. 射不到的远方, 哪管他洪水滔天, 所以这是一种视角相关的方法, 摄像机动一动, 你得重来一遍.
+
 数学上要搞对这些东西还是有点麻烦的, 得推敲好多公式. 这方面资料非常丰富且宽泛, 可自行google: light transport equation. 我暂时舍弃这块内容的讨论:大致就是需要保证概率上的正确性, 以及更有效率地monte carlo估计累加.
+
 我们用最简单的pathtracing作为例子. 这是最简单易操作的实现.
+
 在开始pathtracing之前, 我们需要定义一下场景里的物体是如何与光线作用的.brdf
 ...
+
 tracing的过程
 
 ## Metropolis light transport
@@ -592,7 +683,7 @@ $$
 
 
 
-以上只是处理了屏幕上的遮挡关系, 我们可以用类似的方法处理阴影这些对光源的遮挡关系.
+以上只是处理了屏幕上的遮挡关系(primary visibility), 我们可以用类似的方法处理阴影这些对光源的遮挡关系(secondary visibility).
 
 
 
@@ -859,7 +950,7 @@ $$
 
 //TODO: quantum field theory in a nutshell
 
-![path integral](C:\Users\l\Desktop\notebook\notebooks\lecture_notes\images\path_integral_arrows.png)
+![path integral](.\images\path_integral_arrows.png)
 
 用$q$表示一个粒子的位置， 用$p$表示动量，每个可观测量都对应一个算符，这里分别用$\hat{q}$，$\hat{p}$表示：
 $$
