@@ -10,9 +10,9 @@
 
 ## 内容
 
-1. [Automatic Differentiation (AD)](#Automatic Differentiation)
+1. Automatic Differentiation (AD)
 
-2. [Monte Carlo (MC)](#MonteCarlo)
+2. Monte Carlo (MC)
 
 3. Markov Chain
 
@@ -258,11 +258,11 @@ $$
 
 以上自动微分是一个基本的知识，应用比较广泛，除了机器学习，如CFD，以及一些别的物理模拟系统中也会用到。
 
-## Monte Carlo <a name = "MonteCarlo"></a>
+## Monte Carlo 
 
 由于平时工作从来没有接触过这类比较高端的话题，只记得十多年前翻过一本比较通俗易懂的书，所以以下包括后面MCMC和MCMC path tracing等内容主要参考自[PBR](http://www.pbr-book.org/)，也是我对之前读书内容的一个复习，有兴趣的建议直接读原版内容。
 
-渲染的本质是重建信号：通过探测有限个点的信号，重建原始信号。因为我们的渲染的世界是连续的，无限的，所以这里自然要去采样，要使得重建出来的函数$\bar f$逼近真实函数$f$，或者我们说$E[\bar f]=f$。这里自然就引出了概率的内容，假设我们学过一点概率（我会做很多假设，不然就会导致些许只言片语演变成一本书）。
+渲染的本质是重建信号：通过探测有限个点的信号，重建原始信号。因为我们的渲染的世界是连续的，无限的，所以这里自然要去采样，要使得重建出来的函数$\bar f$逼近真实函数$f$，或者我们说$E[\bar f]=f$(这里是无偏(unbias)的, 还有种是一致(consistent)-随着采样数趋向无穷, 重建出来的函数是真实函数的概率趋向于1)。这里自然就引出了概率的内容，假设我们学过一点概率（我会做很多假设，不然就会导致些许只言片语演变成一本书）。
 
 为了更好地理解这方面内容，避免一股脑儿涌过来的图形学术语的困扰，我把渲染抽象成一个函数，对于我的一个采样点它返回一个值。
 
@@ -282,19 +282,19 @@ $$
 $$
 I\simeq \frac{1}{N}\sum_{i=1}^{N} \frac{f(x_i)}{p(x_i)}
 $$
-$N$为采样数, $p(x_i)$为概率密度函数(PDF). 上式以概率为1趋向于期望值. 收敛速度是$O(\sqrt{N})$, 比如增加1倍的样本, 误差减小$1/\sqrt{2}$. 这个式子本质上是一种加权平均. 举个最简单的例子, 设$x$在$[a,b]$上均匀分布, 那么每个点的权重都相等($p(x)=1/(b-a)$), 我们可以用:
+$N$为采样数, $p(x_i)$为我们采样的$x$的分布的概率密度函数(PDF), 一般采用$p(x_i) \propto f(x_i)$ 来做重要度采样(Importance Sampling). 上式趋向期望值. 收敛速度是$O(\sqrt{N})$, 比如增加1倍的样本, 误差减小$1/\sqrt{2}$. 这个式子本质上是一种加权平均. 举个最简单的例子, 设$x$在$[a,b]$上均匀分布, 那么每个点的权重都相等($p(x)=1/(b-a)$), 我们可以用:
 $$
 I\simeq \frac{b-a}{N}\sum_{i=1}^{N} f(x_i)
 $$
 或者,可以这样理解, 在$[a,b]$上, $N \rightarrow \infty$个采样点的平均值趋向于$f$的平均值, 积分就是求面积, 所以面积=区间大小$\times$均值.
 
-[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫Inversion Method (Importance Sampling); 一种叫Rejection Sampling.
+[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫Inversion Method (Importance Sampling会用到); 一种叫Rejection Sampling.
 
 以一个离散分布为例说明下Inversion Method这个方法:设有四个状态, 处于每种状态的概率各是$p(x_i), \sum_{i=1}^4 p(x_i)=1$. PDF(probability density function) $p(x)$如下图:
 
 ![discrete-pdf](.\images\discrete-pdf.svg)
 
-我们如下累加算出CDF(cumulated density function) $P(x)$:
+我们如下累加算出CDF(cumulative density function) $P(x)$:
 
 ![discrete-cdf](.\images\discrete-cdf.svg)
 
@@ -551,7 +551,7 @@ a((q_0,p_0)\rightarrow (q_L,-p_L)) &= \min(1, \frac{Q((q_L,-p_L)\rightarrow(q_0,
 \end{align}
 $$
 
-$H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,把m设为1, $p$满足一种分布比如(高斯分布), 代入进去就能求出接受概率$a$.
+$H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,把m设为1, $p$满足一种分布的随机变量, 一般用高斯分布(因为$\exp(-K(q,p))=\exp(-p^2/(2m))$, 而这个恰好像一个正态分布: $1/\sqrt{2\pi} \exp(-x^2/2)$), 代入进去就能求出接受概率$a$.
 
 //HMC 图片
 
@@ -563,26 +563,112 @@ $H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,
 
 一种是从raytracing: 摄像机发生光线, 在场景里反复弹射几次, 看看能不能照到光源, 由于光路可逆, 就等于有没有光从光源射到摄像机上, 如果有的话, 那探测到的光能就对看到的图像就有贡献了. 射不到的远方, 哪管他洪水滔天, 所以这是一种视角相关的方法, 摄像机动一动, 你得重来一遍.
 
-数学上要搞对这些东西还是有点麻烦的, 得推敲好多公式. 这方面资料非常丰富且宽泛, 可自行google: light transport equation. 我暂时舍弃这块内容的讨论:大致就是需要保证概率上的正确性, 以及更有效率地monte carlo估计累加.
+数学上要搞对这些东西还是有点麻烦的, 得推敲好多公式. 这方面资料非常丰富且宽泛, 可自行google: light transport equation. 我暂时舍弃这块内容的讨论:大致就是需要保证概率上的正确性, 以及更有效率地monte carlo估计积分.
 
-我们用最简单的pathtracing作为例子. 这是最简单易操作的实现.
+我们用最简单的path tracing作为例子. 这是最简单易操作的实现.
 
-在开始pathtracing之前, 我们需要定义一下场景里的物体是如何与光线作用的.
+在开始path tracing之前, 我们需要定义一下场景里的物体是如何与光线作用的.
 
-//TODO
+光线射到物体表面上, 如何反射出去? 这个我们用一个叫BRDF(Bidirectional Reflectance Distribution Function)的函数描述. 
 
-brdf
-...
+BRDF一般有三个功能:
+1. $f(\omega_i, \omega_o)$ 计算从$\omega_i$方向进来$\omega_o$方向出去的reflectance
 
-tracing的过程
+2. $reflect(\omega_i)$, 从$\omega_i$进来, 返回一个出射光线方向$\omega_o$
 
-Bidirectional Path Tracing, MIS
+3. $pdf(\omega_i, \omega_o)$, 计算光线从$\omega_i$方向进来$\omega_o$方向出去的pdf, 可作重要度采样
+
+  
+
+当我们在场景里看到一个点时, 它的颜色由全场景所有方向的(直接/间接)光反射而来, 是一个半球面所有方向$\Omega$上的积分:
+$$
+L_o(\omega_o, {\bf x})=\int_\Omega L_i(\omega_i) f(\omega_o, \omega_i)\cos\theta_i d\omega_i
+$$
+其中$L_o$是在$\bf x$点, 观察方向为$\omega_o$接收到的反射光, $L_i$是每个方向的入射光, $f$是brdf, $\cos \theta_i = N\cdot \omega_i$, $\theta_i$为法线与入射光角度$\omega_i$的夹角.
+
+![image-20200730084119389](.\images\reflectance_equation.png)
+
+我们从摄像机开始反向追踪光线, 与场景交于$\bf x$点, 这条光线反射方向为$\omega_i$, 入射方向为$\omega_o$, 我们要对$\omega_i$求个积分来算出$\bf x$点的颜色, 这里有无穷多的$\omega_i$方向, 我们用Monte Carlo采样BRDF来估计积分. 这里反射出去之后又会遇到下一个点, 下一个点又需要求一个积分, 如此下去, 直到射中光源(理论上光源也是会反射的, 但发射光一般远远大于反射光, 可以忽略).
+
+BRDF上的Monte Carlo积分, 设我们采样符合一个分布, 其PDF为$p$:
+$$
+L_o(\omega_o,{\bf x})\simeq L_o'(\omega_o, {\bf x}) = \frac{1}{N} \sum_{i=1}^N \frac{L_i(\omega_i, {\bf x}) f(\omega_i, \omega_o) \cos \theta_i}{p(\omega_i)}
+$$
+ 目前常用的BRDF我们都能得到合适的分布来做重要度采样, 这里就不详细展开了.
+
+Path tracing的过程比较简单: 随机从屏幕空间射出一条光线(这条光线其实是伴随一个PDF的, 比如透视投影的摄像机(perspective camera), 光线在摄像机的底片上每个像素的分布不是均匀的, 这里涉及到FOV之类的张角, 需要变换一下), 在场景里跟踪这条光线射中光源为止:
+
+a. 光线与场景求交点.
+
+b. 无交点, 返回黑色或天光
+
+c. 有交点
+
+​	c.1 交点为光源, 返回光的颜色
+
+​	c.2 交点为物体, 获取物体材质BRDF, 采样一个新的射线方向, 反射率, 拿到PDF, 用新的光线从a开始递归求交返回新的光线跟踪的颜色, 将反射率乘上这个颜色并除以PDF, 返回这个结果.
+
+上面这个过程可以控制下递归深度, 太深可以直接返回黑色.
+
+![Multiple-Hits-1024x438-1](.\images\Multiple-Hits-1024x438-1.png)
+
+这个算法看起来很简单, 如果遇到点光源, 可能跑了半天出来一张纯黑的图. 原因是点光源对应于一个$\delta$函数, 只有某个特定的精确的方向上才有值, 而采样时是几乎不可能射到的一个点. 所以有个小优化就是每次求交之后都采样一个场景光源, 向其射一个shadow ray, 看看是否被这个光源照到, 如果照到那就可以叠加一次直接光照, 但同时, 这个点反射的光线如果与相同的光源有交, 那这个反射的光线需要被抛弃掉重新采样新的方向, 不然就会出现光路重复.  这个方法的名字叫Next Event Estimation.
+
+![ce_light_paths_branched_direct](.\images\ce_light_paths_branched_direct.png)
+
+我们还可以用类似正则表达式来匹配一条或多条路径, 比如用L表示Light(光源), D表示Diffuse材质的路径点, S表示Specular材质的路径点. 那么 LDS就表示经过一个光滑的表面, 再到达一个漫反射表面, 最后到达光源的一条路径. 用互不包含的光路叠加就得到了最终的图像. 在某些场合下, 我们并不是简单的叠加, 而是希望加亮或者给某些特殊的路径混合一种颜色, 这样我们可以生成多个图片单独处理, 最后用后期合成.
+
+以上path tracing是无偏的, 简单的, 容易验证的, 低效的估计, 只要给足够多的sample, 就能得到足够好的照片级效果.
+
+某些情况下unidir path tracing是非常低效的, 比如下面这个光源就藏得很深:
+
+![difficult-path](.\images\difficult-path.svg)
+
+大部分路径都白费了, 那么很自然想到的是Bidirectional Path Tracing(BDPT), 从光源出发射些光线出来, 然后和从摄像机出发的光线连接起来:
+
+![bdpt1](.\images\bdpt1.png)
+
+这个简单的操作对我而言比较难, 当初看的第一版的PBR, 里面就有这个实现BDPT的练习题, 当年被它搞死(1.8GHZ的单核电脑半天才能完成一次调试反馈).
+
+我觉得如果这个能不抄别人代码自己独立正确实现的话, 就已经入门图形学渲染方面的研究了. 当然现在[PBR](http://www.pbr-book.org/3ed-2018/Light_Transport_III_Bidirectional_Methods/Bidirectional_Path_Tracing.html)出到第三版了,  有兴趣可以学习一下. 这里简单抄下书里的内容, 如果不想研究也能知道个大概.
+
+Light Path Tracing和Camera Path Tracing都比较简单, 一个在光源上随机采样一个方向, 一个在屏幕空间采样一个点射出一条光线. BDPT最关键的是怎么把这两条路径上的点连接起来.
+
+![Bidir four strategies](.\images\Bidir four strategies.svg)
+
+以上表示了几种连法, 光源出发的路径长度为s, 摄像机出发路径长度为t, 对于不同的s和t, 我们会得到不同的渲染结果:
+
+![bdpt-strategies](.\images\bdpt-strategies.png)
+
+我们最终的结果是这些结果合成的, 因为要把所有的光线路径算上, 如果只是把这些结果叠加起来, 得到的结果的噪声会非常大(variance). 我们可以看到图中某些图很好的抓住了某些光线效果特征, 比如最后一排几张图的焦散. 这里要做的是一个加权平均, 每个连路径的方式(以上每张图)对应了一个PDF叠加, 我们这里要做的是Multiple Importance Sampling, 用每个连接方式的PDF得到一个加权平均. 这个权重计算不太显然, 乘上权重后, 最终的每个连接方式对应的结果如下图:
+
+![bdpt-weighted](.\images\bdpt-weighted.png)
+
+这些图叠加的结果就不会有太多的噪声了.
 
 ## Metropolis light transport
 
-10多年前看过一个叫Eric Veach的人的博士论文(90年代的论文), 感觉就两个字: 懵逼. MLT不仅看不懂, 实现上也无从入手, 这家伙还凭借path tracing方面的研究得了奥斯卡. 如今看了新版的PBR内容, 了解到原版的MLT比较难实现, 后面有人提了个非常简单的算法(PSSMLT), 这里抄的正是这种.
+10多年前看过一个叫Eric Veach的人的博士论文(90年代的论文), 感觉就两个字: 懵逼. MLT不仅看不懂, 实现上也无从入手, 这家伙还凭借path tracing方面的研究得了奥斯卡. 如今看了新版的[PBR](http://www.pbr-book.org/3ed-2018/Light_Transport_III_Bidirectional_Methods/Metropolis_Light_Transport.html)内容, 了解到原版的MLT比较难实现, 后面有人提了个非常简单的算法(primary sample space metroplis light transport - PSSMLT), 这里抄的正是这种.
 
-//TODO
+前面已经讲了Metropolis-Hastings和Path Tracing, 这里把两者结合一下.
+
+已知我们Path Tracing中几乎每一次求交都要采样一次(纯反射除外), 那么就需要有个随机样本, 一般BRDF是个球面上的2d样本, 我们设路径上第 $i$个点采样的样本为$X_i$. 那么一条路径由一系列的样本点唯一决定, 设为$X=(X_1,X_2,...)$, 我们可以看到$X$为无穷维空间$[0,1)^\infty$中的一个点.
+
+那么Metropolis-Hastings作为一种MCMC方法, 需要随机游走, 我们可以让$X$在采样空间中随机游走, 每条路径追踪之后会返回一个颜色, 我们取亮度$I(X)$, 即越亮的地方我希望路径越多. 于是,  我们就可以套用Metropolis-Hastings方法了.
+
+![pssmlt-idea](.\images\pssmlt-idea.svg)
+
+我们对于新的(用高斯分布)扰动过的样本$X'$, 有一个接受概率:
+$$
+a(X\rightarrow X')=\min(1, \frac{I(X')}{I(X)})
+$$
+这个方法继承了MCMC的一些缺点, 我们只能得到一个相似的结果(与真值成正比), 收敛速度不一样或者卡在某些点, 并行化不够好等. 为了得到真值, 我们可以先预先做一个BDPT算出一个平均值, 最后乘上MCMC得到的正比值(boostrap). 为了避免MCMC卡在某些图像区域, 我们预先生成一些种子样本(Seed Sample), 每一个都是一条独立的马尔科夫链.
+
+欣赏一下用MLT渲染的间接光场景, 涵盖了很多种Difficult Light Path:
+
+![veach_scene](.\images\veach_scene.jpg)
+
+这个世界上目前还不存在完美的渲染算法能对各种光路进行非常Robust的渲染, 比如路径中间含有SDS, DSSD, 或者光源藏得很深.
 
 ## Differentiable rendering
 
@@ -760,7 +846,7 @@ $$
 
 对于屏幕空间(primary visibility)上的边, 我们可以基于边的长度作为重要度指标(权重), 选取一条边, 然后均匀的在边上取点.
 
-对于场景中的影响场景光源(或间接光)可见性(secondary visibility)的遮挡物(blocker)的边, 需要更复杂一些:首先建立一种树状层级结构(比如按空间划分), 采样边是也要考虑当前$p$点的材质对边所在方向的以及边上的材质的影响, 而在边上取点时, 把边扩展成一个比较狭长的billboard, 面向next event estimation(有个优化:pathtracing路径上的每个点都会检测一下是否被光源照亮, 这时就要多发射一次光线)的光线求交, 将交点投影到边上而得到.以下简要讲下几个关键词.
+对于场景中的影响场景光源(或间接光)可见性(secondary visibility)的遮挡物(blocker)的边, 需要更复杂一些:首先建立一种树状层级结构(比如按空间划分), 采样边是也要考虑当前$p$点的材质对边所在方向的以及边上的材质的影响, 而在边上取点时, 把边扩展成一个比较狭长的billboard, 面向next event estimation(有个path tracing的优化: path tracing路径上的每个点都会检测一下是否被光源照亮, 这时就要多发射一次光线)的光线求交, 将交点投影到边上而得到.以下简要讲下几个关键词.
 
 1. 如何选取一条边, 方法类似many light. 多光源一直是噩梦, 成千上万个光源, 对每个path都会造成影响,如果都去遍历一遍,性能直接除以光源数. 面对多光源,我们只能挑重点光源(比如特别亮, 影响力特别大), 就像人多了以后, 芸芸众生, 多数平凡, 多一个少一个都差不多, 只有那些重要的人物才能有重要的影响, 我们定义一个重要度, 把重要的人选出来好好对待就差不多了. 场景大量三角形, 大量的边, 选取的时候我们需要按它的长度, 材质属性等定义好重要度, 建立如下图所示的层级结构(紧邻的边可能会形成一个cluster), 基本上就定义了一个分布的CDF, 我们随机一个数, 遍历层级结构, 最后能选中一个边, 越重要的边你可能选中的机会也多.
 
@@ -784,7 +870,7 @@ $$
 
    <img src="./images/hough3d_silhouette.png" alt="image-20200711134541780" style="zoom:50%;" />
 
-   3. 材质上使用LTC(linearly transformed cosines). 这是用三角函数逼近BRDF函数的方法, 作为一个采样边的重要度. 具体可参见[Real-Time Polygonal-Light Shading with Linearly Transformed Cosines](https://blogs.unity3d.com/2016/05/26/real-time-polygonal-light-shading-with-linearly-transformed-cosines/). 
+   3. 材质上使用LTC(linearly transformed cosines). 这是用三角函数逼近BRDF函数的方法, 作为一个采样边的重要度. 把$\cos$分布函数进行变换拟合BRDF函数, 预处理出一个变换矩阵可以将BRDF变换为$\cos$, 从而简化积分($\cos$在多边形上的积分是有解析解的, 直接遍历一遍多边形光源顶点就可以把面光源在BRDF上的所有贡献积分出来了, 核心就是将左边复杂的积分变换为右边简单的积分: $\int_a^b f(g(x))g'(x)dx=\int_{g^{-1}(a)}^{g^{-1}(b)}f(y)dy$). 具体可参见[Real-Time Polygonal-Light Shading with Linearly Transformed Cosines](https://blogs.unity3d.com/2016/05/26/real-time-polygonal-light-shading-with-linearly-transformed-cosines/). 
    
       <img src=".\images\sample_on_edge.png" alt="image-20200712144434425" style="zoom:50%;" />
 
@@ -802,7 +888,7 @@ $$
 
 ## Hessian-Hamiltonian Monte Carlo ray tracing
 
-通常用高斯分布来做为hasting term， 图形学里的anistropic的材质， 在x，y两个方向上是分布不均匀的， 我们用二维高斯来拟合，而gradient，反映了这两个方向上的变化率，进一步的反映二阶导的hessian 矩阵可以引导我们采样的方向。比如牛顿法。
+通常的MCMC会用高斯分布来做为Hastings term. 图形学里的anistropic的材质, 在x，y两个方向上是分布不均匀的， 我们用二维高斯来拟合，而gradient，反映了这两个方向上的变化率，进一步的反映二阶导的hessian 矩阵可以引导我们采样的方向。比如牛顿法。
 
 接下来我们继续这篇博士论文, 这部分主要来自[Anisotropic Gaussian Mutations for Metropolis Light Transport through Hessian-Hamiltonian Dynamics](https://people.csail.mit.edu/tzumao/h2mc/), 讲的是传统的图形学知识: 如何用光线跟踪渲染图片. 一下大部分内容是论文关键内容的翻译抄写.
 
@@ -958,7 +1044,7 @@ $$
 
 ![path integral](.\images\path_integral_arrows.png)
 
-用$q$表示一个粒子的位置， 用$p$表示动量，每个可观测量都对应一个算符，这里分别用$\hat{q}$，$\hat{p}$表示：
+用$q$表示一个粒子的位置， 用$p$表示动量，每个可观测量都对应一个算符，这里分别用$\hat{q}$，$\hat{p}$表示, 我们有：
 $$
 \hat p = -i \hbar \frac{\part}{\part q}\\
 \hat q = q\\
