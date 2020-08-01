@@ -16,7 +16,7 @@
 #include "stb_image_write.h"
 
 
-void GroundTruth(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& rng)
+void GroundTruth(int w, int h, float plotRadius, float* data, SimpleURNG& rng)
 {
 	for(int i = 0; i < h; i++)
 	{
@@ -24,37 +24,51 @@ void GroundTruth(int w, int h, int components, float plotRadius, unsigned char* 
 		for(int j = 0; j < w; j++)
 		{
 			float x = (float(j)/w - 0.5f) * plotRadius;
-			unsigned char value =  static_cast<unsigned char>(render(x, y) * 255);
-			data[(i * w + j ) * components] = value;
+			float value =  static_cast<float>(render(x, y));
+			data[(i * w + j )] = value;
 		}
 	}
 }
 
 
-void SaveResult(const char* fileName, int w, int h, float plotRadius, void (*f)(int w, int h,int components, float plotRadius, unsigned char* data, SimpleURNG& rng))
+void SaveResult(const char* fileName, int w, int h, float plotRadius, void (*f)(int w, int h, float plotRadius, float* data, SimpleURNG& rng))
 {
 	SimpleURNG rng;
 
-	int components = 1;
-	unsigned char* data = new unsigned char[w*h*components];
-	::memset(data, 0, w*h*components * sizeof(unsigned char));
+	int size = w * h;
+	float *intensity = new float[size];
+	f(w, h, plotRadius, intensity, rng);
 
-	f(w, h, components, plotRadius, data, rng);
+	int components = 1;
+	unsigned char* data = new unsigned char[size*components];
+	::memset(data, 0, size*components * sizeof(unsigned char));
+
+	//ramp ?
+	for (int i = 0; i < size; i++) 
+	{
+		float result = intensity[i];
+		for (int c = 0; c < components; c++)
+		{
+			data[i*components + c] = static_cast<unsigned char>(255 * result);
+		}
+	}
 
 	stbi_write_png(fileName, w, h, components, data, 0);
 
 	delete[] data;
+	delete[] intensity;
 }
 
 //we just happens to know the distribution
-void MonteCarloInverse(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& rng)
+void MonteCarloInverse(int w, int h, float plotRadius, float* data, SimpleURNG& rng)
 {
 	int size = w * h;
 
 	//cheating from pdf
-	unsigned char* pdf = new unsigned char[size * components];
-	GroundTruth(w, h, components, plotRadius, pdf, rng);
-	unsigned long *cdf = new unsigned long[size * components];
+	float* pdf = new float[size];
+	GroundTruth(w, h, plotRadius, pdf, rng);
+	float *cdf = new float[size];
+	::memset(cdf, 0, sizeof(float) * size);
 	cdf[0] = pdf[0];
 	for(int i = 1; i < size; i++)
 	{
@@ -62,18 +76,18 @@ void MonteCarloInverse(int w, int h, int components, float plotRadius, unsigned 
 	}
 
 
-	unsigned long total = cdf[size - 1];
-	double zeta = 0;
+	float total = cdf[size - 1];
+	float zeta = 0;
 
-	double* accumulated_data = new double[size];
-	::memset(accumulated_data, 0, sizeof(double) * size);
+	float* accumulated_data = new float[size];
+	::memset(accumulated_data, 0, sizeof(float) * size);
 
 	int total_samples = 0;
 	auto duration = TimedOperation(kTestTime, [&]() {
 		int one_iteration_count = size;
 		while (one_iteration_count-- > 0) {
 			rng.Get1D(&zeta);
-			int index = std::lower_bound(cdf, cdf + size, zeta * total) - cdf;
+			auto index = std::lower_bound(cdf, cdf + size, zeta * total) - cdf;
 			accumulated_data[index] += pdf[index];
 			total_samples++;
 		}
@@ -81,21 +95,22 @@ void MonteCarloInverse(int w, int h, int components, float plotRadius, unsigned 
 
 	for(int i = 0; i < size; i++)
 	{
-		data[i] = static_cast<unsigned char>(std::min(255.0, accumulated_data[i] * double(size)/double(total_samples)));
+		data[i] = (std::min(1.0f, accumulated_data[i] * float(size)/float(total_samples)));
 	}
 
 	delete [] cdf;
 	delete [] pdf;
+	delete[] accumulated_data;
 
 	std::cout << "MonteCarloInverse real time: " << duration.count() << "ms" << std::endl;
 }
 
-void MonteCarloRejection(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& rng)
+void MonteCarloRejection(int w, int h, float plotRadius, float* data, SimpleURNG& rng)
 {
 	const int size = w*h;
 
-	double* accumulated_data = new double[size];
-	::memset(accumulated_data, 0, sizeof(double) * size);
+	float* accumulated_data = new float[size];
+	::memset(accumulated_data, 0, sizeof(float) * size);
 
 	int total_sample_count = 0;
 	float zeta1, zeta2;
@@ -107,18 +122,18 @@ void MonteCarloRejection(int w, int h, int components, float plotRadius, unsigne
 			int j = int(w*zeta2);
 			float y = (zeta1 - 0.5f) * plotRadius;
 			float x = (zeta2 - 0.5f) * plotRadius;
-			double zeta3 = 0;
+			float zeta3 = 0;
 			int accept = 0;
 			rng.Get1D(&zeta3);
 			accept += (zeta3 < render(x, y)) ? 1 : 0;
-			accumulated_data[(i * w + j) * components] += accept;
+			accumulated_data[(i * w + j)] += accept;
 			total_sample_count++;
 		}
 	});
 
 	for(int i = 0; i < size; i++)
 	{
-		data[i] = static_cast<unsigned char>(255 * std::min(1.0, accumulated_data[i] / (double(total_sample_count)/double(size))));
+		data[i] = static_cast<float>(std::min(1.0f, accumulated_data[i] / (float(total_sample_count)/float(size))));
 	}
 
 	delete[] accumulated_data;
@@ -145,14 +160,14 @@ void Mutate(SimpleURNG& rng, double zeta1, double zeta2, double *next_zeta1, dou
 	}
 }
 
-void Record(double* data, int w, int h , int components, double zeta1, double zeta2, double f)
+void Record(double* data, int w, int h, double zeta1, double zeta2, double f)
 {
 	int i = int(h*zeta1);
 	int j = int(w*zeta2);
-	data[(i * w + j ) * components] += f;
+	data[(i * w + j )] += f;
 }
 
-void MetropolisMCMC(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& rng)
+void MetropolisMCMC(int w, int h, float plotRadius, float* data, SimpleURNG& rng)
 {
 	//initial state
 	double zeta1, zeta2;
@@ -160,8 +175,8 @@ void MetropolisMCMC(int w, int h, int components, float plotRadius, unsigned cha
 	double y = (zeta1 - 0.5f) * plotRadius;
 	double x = (zeta2 - 0.5f) * plotRadius;
 	double f = render(x, y);
-	double *accumulated = new double[w*h*components];
-	::memset(accumulated, 0, sizeof(double) * w*h*components);
+	double *accumulated = new double[w*h];
+	::memset(accumulated, 0, sizeof(double) * w*h);
 
 	int total_sample_count = 0;
 	auto duration = TimedOperation(kTestTime, [&]()
@@ -184,8 +199,8 @@ void MetropolisMCMC(int w, int h, int components, float plotRadius, unsigned cha
 			}
 			double a = std::min(1.0, next_f / f);
 			//expected value optimization
-			Record(accumulated, w, h, components, zeta1, zeta2, (1 - a) * f);
-			Record(accumulated, w, h, components, next_zeta1, next_zeta2, a * next_f);
+			Record(accumulated, w, h, zeta1, zeta2, (1 - a) * f);
+			Record(accumulated, w, h, next_zeta1, next_zeta2, a * next_f);
 			double u = 0;
 			rng.Get1D(&u);
 			if (u < a)
@@ -198,9 +213,9 @@ void MetropolisMCMC(int w, int h, int components, float plotRadius, unsigned cha
 		}
 	}
 	);
-	for (int i = 0; i < w*h*components; i++)
+	for (int i = 0; i < w*h; i++)
 	{
-		data[i] = static_cast<unsigned char>(255 * std::min(1.0, accumulated[i] / (double(total_sample_count) / double(w*h))));
+		data[i] = static_cast<float>(std::min(1.0, accumulated[i] / (double(total_sample_count) / double(w*h))));
 	}
 	delete[] accumulated;
 	std::cout << "MetropolisMCMC real time: " << duration.count() << "ms" << std::endl;

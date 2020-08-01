@@ -197,7 +197,7 @@ bool HMC(const U& u_gradu, Number epsilon, int L, const std::array<Number, Dim>&
 	return false;
 }
 
-void HamiltonianMCMC(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& rng) 
+void HamiltonianMCMC(int w, int h, float plotRadius, float* data, SimpleURNG& rng) 
 {
 	TargetDist u;
 
@@ -221,7 +221,7 @@ void HamiltonianMCMC(int w, int h, int components, float plotRadius, unsigned ch
 	q[0] = static_cast<Float>(plotRadius * (zeta1 - 0.5));
 	q[1] = static_cast<Float>(plotRadius * (zeta2 - 0.5));
 
-	Float* accept_score = new Float[w*h*components];
+	Float* accept_score = new Float[w*h];
 	::memset(accept_score, 0, sizeof(Float) * w * h);
 
 	Float total_count = 0;
@@ -259,7 +259,7 @@ void HamiltonianMCMC(int w, int h, int components, float plotRadius, unsigned ch
 	});
 	for (int i = 0; i < w*h; i++) 
 	{
-		data[i*components] = (unsigned char)(255 * std::min(accept_score[i] * boostrap_count / total_count, static_cast<Float>(1.0)) );
+		data[i] = (float)(std::min(accept_score[i] * boostrap_count / total_count, static_cast<Float>(1.0)) );
 	}
 	delete[]accept_score;
 
@@ -322,7 +322,7 @@ Float H2MC(const U u_gradu, Float plotRadius, const H2MCParam& h2mc_params, cons
 	return a;
 }
 
-void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& rng)
+void HessianHamiltonianMC(int w, int h, float plotRadius, float* data, SimpleURNG& rng)
 {
 	TargetDist u;
 
@@ -361,15 +361,15 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 	}
 
 	
-	Float target_accept_rate = 0.8f;//adaptive
+	Float target_accept_rate = 0.6f;//adaptive
 	std::array<Float, 2> q;
 	Float zeta1, zeta2;
 	rng.Get2D(&zeta1, &zeta2);
 	q[0] = static_cast<Float>(plotRadius * (zeta1 - 0.5));
 	q[1] = static_cast<Float>(plotRadius * (zeta2 - 0.5));
 
-	Float* accept_accumulation = new Float[w*h*components];
-	::memset(accept_accumulation, 0, sizeof(Float) * w * h * components);
+	Float* accept_accumulation = new Float[w*h];
+	::memset(accept_accumulation, 0, sizeof(Float) * w * h);
 
 	Float total_count = 0;
 	Float total_accept = 0;
@@ -385,14 +385,27 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 	auto real_time = TimedOperation(kTestTime, [&]()
 	{
 		int batch_size = w*h;
+		const int adaptive_check = 10000;
 		while(batch_size -- > 0 )
 		{
 			auto current_state = state;
 			Float accept_probability = H2MC(u, plotRadius, h2mc_parameters, current_state, &proposal_state, std_rng);
 			bool accepted = uniform_distribution(std_rng) < accept_probability;
+
 			int x;
 			int y;
-			if (accepted) {
+			if (accepted) 
+			{
+				//出界了重来吧
+				x = (int)((proposal_state.q[0] / plotRadius + 0.5) * w);
+				y = (int)((proposal_state.q[1] / plotRadius + 0.5)* h);
+				if (!(x >= 0 && y >= 0 && x < w && y < h)) 
+				{
+					batch_size++;
+					continue;
+				}
+			}
+    		if (accepted) {
 				q = proposal_state.q;
 			}
 			else
@@ -422,7 +435,8 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 			total_count++;
 			if (accepted)
 				total_accept++;
-			if (total_accept / total_count < target_accept_rate)  //try adaptive
+			if (( int(total_count) % adaptive_check) == 0 
+				&& total_accept / total_count < target_accept_rate)  //try adaptive
 			{
 				//narrow down the gaussian
 				h2mc_parameters.sigma *= 0.9f;
@@ -432,7 +446,7 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 
 	for (int i = 0; i < w*h; i++) 
 	{
-		data[i*components] = (unsigned char)(255 * std::min(accept_accumulation[i] * boostrap_count/total_count, static_cast<Float>(1.0)) );
+		data[i] = float(std::min(accept_accumulation[i] * boostrap_count/total_count, static_cast<Float>(1.0)) );
 	}
 	delete[]accept_accumulation;
 
@@ -440,14 +454,14 @@ void HessianHamiltonianMC(int w, int h, int components, float plotRadius, unsign
 }
 
 
-void TestHessianHamiltonMC(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& urng) 
+void TestHessianHamiltonMC(int w, int h, float plotRadius, float* data, SimpleURNG& urng) 
 {
-	::memset(data, 0, sizeof(unsigned char) * w * h *components);
-	HessianHamiltonianMC(w, h, components, plotRadius, data, urng);
+	::memset(data, 0, sizeof(float) * w * h);
+	HessianHamiltonianMC(w, h, plotRadius, data, urng);
 }
 
-void TestHMC(int w, int h, int components, float plotRadius, unsigned char* data, SimpleURNG& urng) 
+void TestHMC(int w, int h, float plotRadius, float* data, SimpleURNG& urng) 
 {
-	::memset(data, 0, sizeof(unsigned char) * w * h *components);
-	HamiltonianMCMC(w, h, components, plotRadius, data, urng);
+	::memset(data, 0, sizeof(float) * w * h);
+	HamiltonianMCMC(w, h, plotRadius, data, urng);
 }
