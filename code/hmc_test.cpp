@@ -103,8 +103,7 @@ class TargetDist
 	static PartialDifferentiableNumber<Float> f2(const PartialDifferentiableNumber<Float>& x, const PartialDifferentiableNumber<Float>& y)
 	{
 		return negative_log(
-			PartialDifferentiableNumber<Float>(1)  // 这里加上一个常数缩放一下原分布，因为我们本身就只能求正比于原函数的函数，而且这里原分布会取到0，取-log，出现类似于黑洞一样的无穷大，导致无法逃离，从而会卡在一个地方很久才能逃离，出现较大的variance。
-			+ xysinxy(x, y));
+			xysinxy(x, y));
 	}
 public:
 	Float f(Float x, Float y) {
@@ -197,6 +196,13 @@ bool HMC(const U& u_gradu, Number epsilon, int L, const std::array<Number, Dim>&
 	return false;
 }
 
+static void InitializePosition(SimpleURNG& rng, float plotRadius, std::array<Float,2>* q) 
+{
+	Float zeta1, zeta2;
+	rng.Get2D(&zeta1, &zeta2);
+	(*q)[0] = static_cast<Float>(plotRadius * (zeta1 - 0.5));
+	(*q)[1] = static_cast<Float>(plotRadius * (zeta2 - 0.5));
+}
 void HamiltonianMCMC(int w, int h, float plotRadius, float* data, SimpleURNG& rng) 
 {
 	TargetDist u;
@@ -216,11 +222,7 @@ void HamiltonianMCMC(int w, int h, float plotRadius, float* data, SimpleURNG& rn
 	Float target_accept_rate = 0.8f;
 	Float epsilon =  static_cast<Float>(plotRadius * 1.0 / (std::max(w, h) ));
 	std::array<Float, 2> q;
-	Float zeta1, zeta2;
-	rng.Get2D(&zeta1, &zeta2);
-	q[0] = static_cast<Float>(plotRadius * (zeta1 - 0.5));
-	q[1] = static_cast<Float>(plotRadius * (zeta2 - 0.5));
-
+	InitializePosition(rng, plotRadius, &q);
 	Float* accept_score = new Float[w*h];
 	::memset(accept_score, 0, sizeof(Float) * w * h);
 
@@ -233,20 +235,23 @@ void HamiltonianMCMC(int w, int h, float plotRadius, float* data, SimpleURNG& rn
 		while(batch_size -- )
 		{
 			auto current_q = q;
-			bool accept = HMC<TargetDist, Float, 2>(u, epsilon, integral_steps, current_q, nrng, rng, &q);
+			bool accept = HMC(u, epsilon, integral_steps, current_q, nrng, rng, &q);
 
 			int x;
 			int y;
 
 			x = (int)((q[0] / plotRadius + 0.5) * w);
-			y = int((q[1] / plotRadius + 0.5)* h);
+			y = (int)((q[1] / plotRadius + 0.5)* h);
 			if (x >= 0 && y >= 0 && x < w && y < h)
 			{
 				accept_score[y * w + x] += normalization;
 			}
 			else
 			{
-				q = current_q;
+				//q = current_q;
+				//restart MCMC
+				InitializePosition(rng, plotRadius, &q);
+				continue;
 			}
 			total_count++;
 			if (accept)
@@ -332,7 +337,7 @@ void HessianHamiltonianMC(int w, int h, float plotRadius, float* data, SimpleURN
 	const bool reality = false;
 	if(reality)
 	{
-		//boostrap may introduce bais
+		//boostrap may introduce bias
 		Float boostrap_total = 0;
 		for (int i = 0; i < boostrap_count; i++) {
 			Float zeta1, zeta2;
@@ -363,10 +368,7 @@ void HessianHamiltonianMC(int w, int h, float plotRadius, float* data, SimpleURN
 	
 	Float target_accept_rate = 0.6f;//adaptive
 	std::array<Float, 2> q;
-	Float zeta1, zeta2;
-	rng.Get2D(&zeta1, &zeta2);
-	q[0] = static_cast<Float>(plotRadius * (zeta1 - 0.5));
-	q[1] = static_cast<Float>(plotRadius * (zeta2 - 0.5));
+	InitializePosition(rng, plotRadius, &q);
 
 	Float* accept_accumulation = new Float[w*h];
 	::memset(accept_accumulation, 0, sizeof(Float) * w * h);
@@ -394,17 +396,6 @@ void HessianHamiltonianMC(int w, int h, float plotRadius, float* data, SimpleURN
 
 			int x;
 			int y;
-			if (accepted) 
-			{
-				//出界了重来吧
-				x = (int)((proposal_state.q[0] / plotRadius + 0.5) * w);
-				y = (int)((proposal_state.q[1] / plotRadius + 0.5)* h);
-				if (!(x >= 0 && y >= 0 && x < w && y < h)) 
-				{
-					batch_size++;
-					continue;
-				}
-			}
     		if (accepted) {
 				q = proposal_state.q;
 			}
@@ -414,8 +405,9 @@ void HessianHamiltonianMC(int w, int h, float plotRadius, float* data, SimpleURN
 			}
 			x = (int)((q[0] / plotRadius + 0.5) * w);
 			y = (int)((q[1] / plotRadius + 0.5)* h);
+			bool inside = x >= 0 && y >= 0 && x < w && y < h;
 
-			if (x >= 0 && y >= 0 && x < w && y < h)
+			if (inside)
 			{
 				if (accepted)
 				{
@@ -430,7 +422,10 @@ void HessianHamiltonianMC(int w, int h, float plotRadius, float* data, SimpleURN
 			}
 			else
 			{
-				state = current_state;
+				//restart MCMC
+				InitializePosition(rng, plotRadius, &q);
+				InitializeState(&state, u, h2mc_parameters, q);
+				continue;
 			}
 			total_count++;
 			if (accepted)
