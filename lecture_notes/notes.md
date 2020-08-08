@@ -189,9 +189,9 @@ f(\bold{x_{ij}}) &= f(\bold{x}) + h_1 \frac{\part f(\bold{x})}{\part x_i}\epsilo
 $$
 其中$f(\bold{x_{ij}})$运行一次可以求出$x_i,x_j$ 的一阶导， 以及一个二阶导，后面我们会利用这个属性求出hessian matrix。我在[notebook](https://github.com/luozhiyuan/notebooks/blob/master/partial_differentiable_number.hpp)中写了一个，具体实现可见源码。对于本文和后面的内容来讲，二阶导已经足够。
 
-以上称为前向自动微分(forward mode of automatic differentiation)。
+以上称为**前向自动微分(forward mode of automatic differentiation)**。
 
-对于很多机器学习任务来讲，$f:\R^m \rightarrow \R^n, m \gg n$，计算这样的函数的梯度，以上前向模式会显得低效。所以还有种通过求解线性方程组的反向自动微分（reverse mode of automatic differentiation）。
+对于很多机器学习任务来讲，$f:\R^m \rightarrow \R^n, m \gg n$，计算这样的函数的梯度，以上前向模式会显得低效。所以还有种通过求解线性方程组的**反向自动微分（reverse mode of automatic differentiation）**。
 
 以上面$f(x,y,z)=xy\sin(yz)$为例，把中间变量前向（从下到上）算一遍得出这些中间变量的值$(x,y,z,t,u,v,w)$：
 
@@ -268,7 +268,7 @@ $$
 
 考虑这样一个函数$f(x,y)= (1+\sin(x^2+y^2))/2$，我们假设自己一开始并不知道这个函数是啥（假装自己不知道他的解析形式，因为渲染函数是没有解析解的），但要在一个定义域范围内重建这个函数（$-512<x,y<512,0<w_i<1$），每给一个采样点，我们可以计算得到这个采样点上的值。
 
-我们先偷看下真实的函数图像（ground truth）：
+我们先偷看下真实的让人目眩的函数图像(ground truth), 这个函数有一些有意思的特点, 后面将会遇到:
 
 ![xx_yy](.\images\xx_yy.png)
 
@@ -288,7 +288,7 @@ I\simeq \frac{b-a}{N}\sum_{i=1}^{N} f(x_i)
 $$
 或者,可以这样理解, 在$[a,b]$上, $N \rightarrow \infty$个采样点的平均值趋向于$f$的平均值, 积分就是求面积, 所以面积=区间大小$\times$均值.
 
-[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫Inversion Method (Importance Sampling会用到); 一种叫Rejection Sampling.
+[PBR](http://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables.html)中介绍了采样的两种方法: 一种叫**Inversion Method **(Importance Sampling会用到); 一种叫**Rejection Sampling**.
 
 以一个离散分布为例说明下Inversion Method这个方法:设有四个状态, 处于每种状态的概率各是$p(x_i), \sum_{i=1}^4 p(x_i)=1$. PDF(probability density function) $p(x)$如下图:
 
@@ -321,7 +321,17 @@ $$
 
 如上图, 我们知道圆的面积与正方形的面积之比为$\pi/4$, $\pi$的数值并不清楚. 于是我们可以开始在正方形上均匀的打散弹枪. 只要打无穷多的点, 我们就可以知道精确的$\pi$值. 人生是有限的, 我们只能打有穷多的点, 数一数圆里面的点的数量, 与我们打的点的总数. 取个比值比如$r$, $r \simeq \pi/4, \pi \simeq 4r$. 我们就得到了一定精度的$\pi$.
 
-//montecarlo图片
+对于本文前面说的例子, 我们这里有两张图片, 分别采用inverse method和rejection method得到, 后面不加说明都是在我电脑上跑了相同时间得到的结果(10秒):
+
+Inverse Method Result:
+
+![xx_yy_mc_inverse](.\images\xx_yy_mc_inverse.png)
+
+Rejection Method Result:
+
+![xx_yy_mc_rejection](.\images\xx_yy_mc_rejection.png)
+
+
 
 ## Markov Chain
 
@@ -443,7 +453,9 @@ $mutate_1$:
 
 ![metro-300k-1mutate](.\images\metro-300k-1mutate.svg)
 
-//MCMC 图片对比
+对于前面提到的本文采用的例子, 我们用MCMC算法的模拟结果为:
+
+![xx_yy_mc_metropolis](.\images\xx_yy_mc_metropolis.png)
 
 ### Hamiltonian Monte Carlo
 
@@ -459,7 +471,7 @@ $mutate_1$:
 
 <img src=".\images\hmc1d_log.png" alt="image-20200721222940120" style="zoom:50%;" />
 
-哈密尔顿力学系统作用在位置和动量上, 这个系统用一个叫哈密尔顿量的函数表示$H(q,p)$. 这个量指征了系统的状态, 比如像氢原子能级之类的.
+哈密尔顿力学系统作用在位置和动量上, 这个系统用一个叫哈密尔顿量的函数表示$H(q,p)$. 这个量指征了系统的能量, 比如像氢原子能级之类的(量子力学里哈密尔顿算符(Hamiltonian Operator)的本征值就是能量, 也称为能量算符).
 
 物理中的两个基本量: 动量($p=mv$)与位置($q$). $(q,p)$这两个定义了一个相空间的坐标(phase space), 我们引入可以改变$q$的动量, $\pi(q,p)$在位置轴$q$上的投影就是我们的目标分布$\pi(q)$其定义为:
 $$
@@ -469,7 +481,7 @@ $$
 
 
 
-这里插点题外话,  哈密尔顿力学非常重要, 哈密尔顿方程的特性在数学上,物理上, 信息学等不同领域都有不同的意义. 比如在量子力学统计诠释中, 在测量之前我们无法得知精确的位置, 粒子的位置是符合一个概率分布的(期望是$\langle q\rangle$), 而这个分布在无穷远处(后面我们会看到$H\rightarrow \infty$)的概率为0, 这个分布基本上可以直接映射到我们的$\pi(q)$, 而哈密尔顿力学系统对粒子的作用就是把粒子位置的概率分布做一个变换, 这个变换需要保持一些特性: 比如维持海森堡测不准的度量, 最开始位置可能会在$q\pm\delta$的区间内, 作用后仍然在一个$q'\pm\delta$的范围内, $q,q'$是前后两个位置的期望.
+这里插点题外话,  哈密尔顿力学非常有意思, 哈密尔顿方程的特性在数学上,物理上, 信息学等不同领域都有不同的意义. 比如在量子力学统计诠释中, 在测量之前我们无法得知精确的位置, 粒子的位置是符合一个概率分布的(期望是$\langle q\rangle$), 而这个分布在无穷远处(后面我们会看到$H\rightarrow \infty$)的概率为0, 这个分布基本上可以直接映射到我们的$\pi(q)$, 而哈密尔顿力学系统对粒子的作用就是把粒子位置的概率分布做一个变换, 这个变换需要保持一些特性: 比如维持海森堡测不准的度量, 最开始位置可能会在$q\pm\delta$的区间内, 作用后仍然在一个$q'\pm\delta$的范围内, $q,q'$是前后两个位置的期望.
 
 $H$为定义在相空间上的函数, 如果高维的理解起来有些困难, 看的时候不妨把他假设成一维的, 那样$H$就是个二元函数, 而这个方法的核心就是利用了相空间的一些几何特性. 这里后面对位置和动量($q,p$)不怎么区分一维和多维, 多维的情况就是把每一维的分量代到公式里.
 $$
@@ -481,6 +493,8 @@ $$
 \frac{dq}{dt} = \frac{\part H}{\part p} = \frac{\part K}{\part p}\\
 \frac{dp}{dt} = -\frac{\part H}{\part q}=-\frac{\part K}{\part q} - \frac{\part V}{\part q}
 $$
+这里用经典力学的方式对这个公式做个直观解释(事实上不太科学):
+
 第一个方程可以这么理解:  $dq/dt$就是位置变化率, 就是速度, $K$ 是动能$mv^2/2$, 对$mv$求导(质量$m$是常数)就是对$v$求导, 得到的也是速度$v$.
 
 第二个方程也比较容易理解: 看$dp/dt$的物理意义. 我们的质量$m$不会随时间变化, 那么$dp/dt = mdv/dt=ma$, 我记得高中里学过力$F=ma$, 我用力$F$将我们的粒子移动一小段距离$dq$, 做的功就是它能量的变化$dE$, 即$F dq = -dE$, 我不用说你也知道我们的能量就是哈密尔顿量, 即$Fdq = -dH$, 用偏导的形式$F\part q=-\part H$, 从而有$(dp/dt) = ma = F = -\part H/\part q$.
@@ -553,9 +567,11 @@ $$
 
 $H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,把m设为1, $p$满足一种分布的随机变量, 一般用高斯分布(因为$\exp(-K(q,p))=\exp(-p^2/(2m))$, 而这个恰好像一个正态分布: $1/\sqrt{2\pi} \exp(-x^2/2)$), 代入进去就能求出接受概率$a$.
 
-//HMC 图片
+作为对比, 对于本文前面提到的例子, 我们有:
 
- 对结果的马后炮分析: 假设我们的实现没有bug (这是很强的假设, 有可能不成立哦), 一般而言HMC对于高维的情况是比较合适的, 而我们这里只有二维, HMC的表现很差. 而且我们的函数比较特别...
+![xx_yy_hmc](.\images\xx_yy_hmc.png)
+
+ 对结果的马后炮分析: 假设我们的实现没有bug (这是很强的假设, 有可能不成立哦),  一般而言HMC对于高维的情况是比较合适的, 而我们这里只有二维, HMC的表现很差. 而且我们的函数比较特别, 如果从一个轴向上看, 就是一个$\sin (x^2)$,  沟沟壑壑非常刺激, 对于HMC而言, 很容易掉沟里去卡很久才出来.
 
 ## Path tracing and bidirectional path tracing
 
@@ -582,7 +598,7 @@ BRDF一般有三个功能:
 
   
 
-当我们在场景里看到一个点时, 它的颜色由全场景所有方向的(直接/间接)光反射而来, 是一个半球面所有方向$\Omega$上的积分:
+当我们在场景里看到一个点时, 它的颜色由全场景所有方向的(直接/间接)光通过一定的反射比例反射而来, 是一个半球面所有方向$\Omega$上的积分:
 $$
 L_o(\omega_o, {\bf x})=\int_\Omega L_i(\omega_i) f(\omega_o, \omega_i)\cos\theta_i d\omega_i
 $$
@@ -614,7 +630,7 @@ c. 有交点
 
 ![Multiple-Hits-1024x438-1](.\images\Multiple-Hits-1024x438-1.png)
 
-这个算法看起来很简单, 如果遇到点光源, 可能跑了半天出来一张纯黑的图. 原因是点光源对应于一个$\delta$函数, 只有某个特定的精确的方向上才有值, 而采样时是几乎不可能射到的一个点. 所以有个小优化就是每次求交之后都采样一个场景光源, 向其射一个shadow ray, 看看是否被这个光源照到, 如果照到那就可以叠加一次直接光照, 但同时, 这个点反射的光线如果与相同的光源有交, 那这个反射的光线需要被抛弃掉重新采样新的方向, 不然就会出现光路重复.  这个方法的名字叫Next Event Estimation.
+这个算法看起来很简单, 如果遇到点光源, 可能跑了半天出来一张纯黑的图. 原因是点光源对应于一个$\delta$函数, 只有某个特定的精确的方向上才有值, 而采样时是几乎不可能射到的一个点. 所以有个小优化就是每次求交之后都采样一个场景光源, 向其射一个shadow ray, 看看是否被这个光源照到, 如果照到那就可以叠加一次直接光照, 但同时, 这个点反射的光线如果与相同的光源有交, 那这个反射的光线需要被抛弃掉重新采样新的方向, 不然就会出现光路重复.  这个方法的名字也叫Next Event Estimation.
 
 ![ce_light_paths_branched_direct](.\images\ce_light_paths_branched_direct.png)
 
@@ -624,7 +640,7 @@ c. 有交点
 
 某些情况下unidir path tracing是非常低效的, 比如下面这个光源就藏得很深:
 
-![difficult-path](.\images\difficult-path.svg)
+<img src=".\images\difficult-path.svg" alt="difficult-path" style="zoom:50%;" />
 
 大部分路径都白费了, 那么很自然想到的是Bidirectional Path Tracing(BDPT), 从光源出发射些光线出来, 然后和从摄像机出发的光线连接起来:
 
@@ -648,6 +664,18 @@ Light Path Tracing和Camera Path Tracing都比较简单, 一个在光源上随�
 
 这些图叠加的结果就不会有太多的噪声了.
 
+至于具体MIS的做法, 书上是这样的, 每个light path和camera path路径上的节点, 都记录了前向过来的forward PDF和反向回去的reverse PDF(基本上是BRDF里把$\omega_i,\omega_o$反一下), 那么每条连接而得的路径有一个PDF, 比如对于长度为n的路径:
+$$
+p_i({\bf x}) = p^{\rightarrow}(x_0) \cdots p^{\rightarrow}(x_{i-1}) \cdot p^{\leftarrow}(x_i) \cdots p^{\leftarrow}({x_{n-1}})
+$$
+箭头方向表示forward或是reverse. 那么每种连接方式都有了一个PDF($p_i$), 那么这种连接方式的MIS权重为:
+$$
+w_s({\bf{x}}) = \frac{p_s({\bf{x}})}{\sum_i p_i({\bf x})}
+$$
+以上这个权重实际中还不好算, 因为上面那个连续的乘法因为浮点精度之类的问题, 可能乘到后面连妈都不认识了. 书中有一种增量式的计算方式, 这里就懒得说了. 
+
+这里也提一下, BDPT并不一直优于普通的单向Path tracing,  当我们主要被间接光照亮, 比较难以追踪到光源时, BDPT是优于PT的, 但如果光源很容易追踪到, 那PT是会比BDPT快很多的.
+
 ## Metropolis light transport
 
 10多年前看过一个叫Eric Veach的人的博士论文(90年代的论文), 感觉就两个字: 懵逼. MLT不仅看不懂, 实现上也无从入手, 这家伙还凭借path tracing方面的研究得了奥斯卡. 如今看了新版的[PBR](http://www.pbr-book.org/3ed-2018/Light_Transport_III_Bidirectional_Methods/Metropolis_Light_Transport.html)内容, 了解到原版的MLT比较难实现, 后面有人提了个非常简单的算法(primary sample space metroplis light transport - PSSMLT), 这里抄的正是这种.
@@ -666,7 +694,7 @@ a(X\rightarrow X')=\min(1, \frac{I(X')}{I(X)})
 $$
 这个方法继承了MCMC的一些缺点, 我们只能得到一个相似的结果(与真值成正比), 收敛速度不一样或者卡在某些点, 并行化不够好等. 为了得到真值, 我们可以先预先做一个BDPT算出一个平均值, 最后乘上MCMC得到的正比值(boostrap). 为了避免MCMC卡在某些图像区域, 我们预先生成一些种子样本(Seed Sample), 每一个都是一条独立的马尔科夫链.
 
-欣赏一下用MLT渲染的间接光场景, 涵盖了很多种Difficult Light Path:
+写了这么多渲染的, 一张结果都没有, 这里就顺便贴一下用MLT渲染的间接光场景, 涵盖了很多种Difficult Light Path:
 
 ![veach_scene](.\images\veach_scene.jpg)
 
@@ -872,9 +900,11 @@ $$
 
    <img src="./images/hough3d_silhouette.png" alt="image-20200711134541780" style="zoom:50%;" />
 
-   3. 材质上使用LTC(linearly transformed cosines). 这是用三角函数逼近BRDF函数的方法, 作为一个采样边的重要度. 把$\cos$分布函数进行变换拟合BRDF函数, 预处理出一个变换矩阵可以将BRDF变换为$\cos$, 从而简化积分($\cos$在多边形上的积分是有解析解的, 直接遍历一遍多边形光源顶点就可以把面光源在BRDF上的所有贡献积分出来了, 核心就是将左边复杂的积分变换为右边简单的积分: $\int_a^b f(g(x))g'(x)dx=\int_{g^{-1}(a)}^{g^{-1}(b)}f(y)dy$). 具体可参见[Real-Time Polygonal-Light Shading with Linearly Transformed Cosines](https://blogs.unity3d.com/2016/05/26/real-time-polygonal-light-shading-with-linearly-transformed-cosines/). 
    
-      <img src=".\images\sample_on_edge.png" alt="image-20200712144434425" style="zoom:50%;" />
+
+   3 材质上使用LTC(linearly transformed cosines). 这是用三角函数逼近BRDF函数的方法, 作为一个采样边的重要度. 把$\cos$分布函数进行变换拟合BRDF函数, 预处理出一个变换矩阵可以将BRDF变换为$\cos$, 从而简化积分($\cos$在多边形上的积分是有解析解的, 直接遍历一遍多边形光源顶点就可以把面光源在BRDF上的所有贡献积分出来了, 核心就是将左边复杂的积分变换为右边简单的积分: $\int_a^b f(g(x))g'(x)dx=\int_{g^{-1}(a)}^{g^{-1}(b)}f(y)dy$). 具体可参见[Real-Time Polygonal-Light Shading with Linearly Transformed Cosines](https://blogs.unity3d.com/2016/05/26/real-time-polygonal-light-shading-with-linearly-transformed-cosines/)以及这片文章的续集.  他们把这个问题放到线光源上, 这里因为是一条边, 类比线光源取得积分结果来作为重要度.
+
+   <img src=".\images\sample_on_edge.png" alt="image-20200712144434425" style="zoom:50%;" />
 
 
 
@@ -1036,15 +1066,17 @@ x_{n+1}= x_{n} - \frac{f'(x_n)}{f''(x_n)} \\
 $$
 所以要对这篇论文做一句话总结的话: 一种牛顿法.
 
-//H2MC 模拟的图片
+我用H2MC模拟了本文的例子:
+
+![xx_yy_h2mc](.\images\xx_yy_h2mc.png)
+
+我不敢说没有bug, 但从另一方面很好地展示了MCMC方法收敛的不均匀.
 
 ## *Path Integral
 
 费曼研究生时发明了一种叫路径积分的东西， Path Tracing一类方法就是从这里来的， 我觉得很有意思， 写在这里。如果你能看懂讲旋转的[球谐笔记](https://zhuanlan.zhihu.com/p/140421707)的话，下面内容也不会太难。写这个主要是，前面讲了Path Tracing，Hamiltonian, 概率论， 那么来点量子力学把它们用到的东西搅在一块，毕竟量子力学是一种“概率”论，“装逼要装到深处”。
 
 不过这块在数学上的根基不是非常牢固, 不像微积分经过了几百年发展.
-
-//TODO: quantum field theory in a nutshell
 
 ![path integral](./images/path_integral_arrows.png)
 
@@ -1091,6 +1123,10 @@ $$
 $$
 e^{-i\hat{H}\cdot (t-t_i)} = e^{-i\hat{H}\Delta t}e^{-i\hat{H}\Delta t}...e^{-i\hat{H}\Delta t}
 $$
+
+//TODO : $\lim_{n\rightarrow \infty}$
+
+
 
 # The End
 

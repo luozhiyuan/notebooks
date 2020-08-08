@@ -230,6 +230,7 @@ int main()
 	SaveResult("xx_yy_mc_inverse.png", w, h, plotRadius, MonteCarloInverse);
 	SaveResult("xx_yy_mc_rejection.png", w, h, plotRadius, MonteCarloRejection);
 	SaveResult("xx_yy_mc_metropolis.png", w, h, plotRadius, MetropolisMCMC);
+
 	SaveResult("xx_yy_hmc.png", w, h, plotRadius, TestHMC);
 	SaveResult("xx_yy_h2mc.png", w, h, plotRadius, TestHessianHamiltonMC);
 

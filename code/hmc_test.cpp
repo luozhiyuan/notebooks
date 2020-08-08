@@ -258,7 +258,7 @@ void HamiltonianMCMC(int w, int h, float plotRadius, float* data, SimpleURNG& rn
 				total_accept++;
 			if (total_accept / total_count < target_accept_rate) {
 				epsilon -= epsilon / integral_steps;
-				epsilon = std::max(epsilon, static_cast<Float>(1.0 / (std::max(w, h))));
+				epsilon = std::max(epsilon, static_cast<Float>(1.0 / (integral_steps*std::max(w, h))));
 			}
 		}
 	});
