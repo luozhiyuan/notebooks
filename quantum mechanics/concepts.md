@@ -19,7 +19,6 @@
    \langle H \rangle = \frac{\int_{-\infty}^{+\infty} \bold{\Psi}^* \hat{H} \bf{\Psi} d\tau}{\int_{-\infty}^{+\infty} \bold{\Psi}^* \bf{\Psi} d\tau }
    $$
    
-
 5. 随着时间变化的波函数满足含时薛定谔方程(Time-dependent Schrödinger Equation):
    $$
    \hat{H} {\bf{\Psi}} ({\bf{r}},t) = i \hbar \frac{\part \bf{\Psi}}{\part t}
@@ -64,4 +63,13 @@ $$
 $$
 考虑一维的情况, $x$为直线上的坐标, 我们在坐标$x_0$找到这个粒子的概率为$\mid f(x_0)\mid^2$, 我们的位置状态由本征态的线性组合而成: $\vert \psi \rangle= \sum f(x_i) \vert x_i\rangle = \int_{-\infty}^{+\infty} f(x)dx$, 
 
+//TODO: 推导
+$$
+\hat p=-i\hbar\frac{\part}{\part x} 
+$$
+
+
 测不准原理:
+$$
+(\hat x \hat p-\hat p \hat x) \vert \psi\rangle=
+$$
