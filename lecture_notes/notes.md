@@ -4,7 +4,7 @@
 
 [本文有种怎么写也写不完的无力感, 有些内容比较主观, 请读者自斟; 同时水平和精力有限, 错漏之处, 也烦请读者指正]
 
-日常搬砖没有什么特别有意思的东西可以分享，但我不想浪费这次机会，这篇年度最佳的论文[differentiable visual computing](https://people.csail.mit.edu/tzumao/phdthesis/phdthesis.pdf)，至少对于我没见过机器学习的人来说，这类从未见过的方法，刷新了我的认知，觉得很有意思，所以就拿来分享给和我一样不懂机器学习和渲染的初学者。本文提到的一些按我自己理解写的源码可在我的[notebook](https://github.com/luozhiyuan/notebooks)中浏览(包含了目录中AD, MC, MCMC, HMC, H2MC等内容的演示代码-由于不会Python, 暂时用C++写了)。
+日常搬砖没有什么特别有意思的东西可以分享, 但我不想浪费这次机会, 这篇年度最佳的论文[differentiable visual computing](https://people.csail.mit.edu/tzumao/phdthesis/phdthesis.pdf), 至少对于我没见过机器学习的人来说, 这类从未见过的方法, 刷新了我的认知, 觉得很有意思, 所以就拿来分享给和我一样不懂机器学习和渲染的初学者. 本文提到的一些按我自己理解写的源码可在我的[notebook](https://github.com/luozhiyuan/notebooks)中浏览(包含了目录中AD, MC, MCMC, HMC, H2MC等内容的演示代码-由于不会Python, 暂时用C++写了). 
 
 这里的内容称为Graphics是不太合适的, 并没有包含物理模拟等内容, 如果想更多地了解Differentiable Graphics的内容, 可以继续参考[DiffTaiChi](https://arxiv.org/abs/1910.00935), 也是非常有意思的工作. 另一方面, 有很多基础知识还是有相通之处的, 只是应用场景的不同而导致一些领域知识的差异.
 
@@ -18,7 +18,7 @@
 
 4. Markov Chain Monte Carlo (MCMC)
 
-   4.1 Metropolis-Hasting
+   4.1 Metropolis-Hastings
 
    4.2 Hamiltonian Monte Carlo (HMC)
 
@@ -36,25 +36,25 @@
 
 ## Automatic Differentiation
 
-假设我们都学过微积分， 那里面的内容大致可以分为微分和积分，这里介绍的是一种自动微分方法。
+假设我们都学过微积分,  那里面的内容大致可以分为微分和积分, 这里介绍的是一种自动微分方法. 
 
-一阶微分算子$\cal D: f \rightarrow f'$是一个线性算子，经过适当的定义，线性代数中的一切结论都可以适用，这里就不展开了，二阶的$\cal D^2$就不是线性的了， 会有些麻烦， 后面会提到。
+一阶微分算子$\cal D: f \rightarrow f'$是一个线性算子, 经过适当的定义, 线性代数中的一切结论都可以适用, 这里就不展开了, 二阶的$\cal D^2$就不是线性的了,  会有些麻烦,  后面会提到. 
 
-为了计算一个函数的微分： 
+为了计算一个函数的微分: 
 $$
 f'(x) =\frac{d(f(x))}{dx} = \lim_{\Delta x\rightarrow 0}{ \frac {f(x+\Delta x)-f(x)}{\Delta x} }
 $$
 
 
-我们可以手动算极限，可以用符号运算计算，或者数值计算。
+我们可以手动算极限, 可以用符号运算计算, 或者数值计算. 
 
-手动算初等函数组合而成的函数，我们可以人肉查下微分表，比如$d(e^x)/dx = e^x, d(\sin x)/dx = \cos x$，更复杂的我也记不住了 。
+手动算初等函数组合而成的函数, 我们可以人肉查下微分表, 比如$d(e^x)/dx = e^x, d(\sin x)/dx = \cos x$, 更复杂的我也记不住了. 
 
-符号运算的话如下图让计算机根据微分法则（乘法法则和链式法则），查微分表。
+符号运算的话如下图让计算机根据微分法则(乘法法则和链式法则), 查微分表. 
 
 <img src="./images/xysinyz.png" alt="xysinyz" style="zoom: 33%;" />
 
-数值方法的话就是利用定义让计算机去求极限：
+数值方法的话就是利用定义让计算机去求极限:
 $$
 f'(x) \eqsim \frac{f(x+h) - f(x-h)}{2h}
 $$
@@ -68,19 +68,19 @@ $$
 | 1e-6 | 0.9999999999732444     |
 | 1e-7 | 0.9999999994736439     |
 
-现实中，我们的函数会非常复杂，或者没有明确的表达式，有时候只有一个数据集到另一个数据集的映射。这里介绍一种精确的自动微分技术， 我们先定义一个二元数。
+现实中, 我们的函数会非常复杂, 或者没有明确的表达式, 有时候只有一个数据集到另一个数据集的映射. 这里介绍一种精确的自动微分技术,  我们先定义一个二元数. 
 
-**Dual Number**：$a+b\epsilon, a\in \R, b\in \R, \epsilon \neq 0, \epsilon^2=0$。这个数有两部分组成，第一部分为这个数的值$a$，第二部分为一阶微分$b$。我们定义它的加减乘除形成一个域，使得它像普通的数一样参与计算。
+**Dual Number**: $a+b\epsilon, a\in \R, b\in \R, \epsilon \neq 0, \epsilon^2=0$. 这个数有两部分组成, 第一部分为这个数的值$a$, 第二部分为一阶微分$b$. 我们定义它的加减乘除形成一个域, 使得它像普通的数一样参与计算. 
 $$
 (a+b\epsilon)+(c+d\epsilon) = (a+c) + (b+d)\epsilon \\
 (a+b\epsilon)(c+d\epsilon) = ac +(ad+bc)\epsilon \\
 \frac{a+b\epsilon}{c+d\epsilon} = \frac{a}{c} + \frac{bc-ad}{c^2}\epsilon, c\neq 0
 $$
-对于实函数$f(x)$，我们定义
+对于实函数$f(x)$, 我们定义
 $$
 f(a+b\epsilon) = f(a) + f'(a)b\epsilon
 $$
-这个定义是良好的（well defined），我们可以得到微分的乘法法则，和链式法则：
+这个定义是良好的(well defined), 我们可以得到微分的乘法法则, 和链式法则:
 $$
 f(x)=g(x)h(x) \rightarrow \\
 \begin{align} 
@@ -103,13 +103,13 @@ f(a+b\epsilon) &= g(h(a+b\epsilon)) \\
 f'(a) = g'(h(a))h'(a)
 $$
 
-以下自动微分的内容来自[How to Differentiate with a Computer](http://www.ams.org/publicoutreach/feature-column/fc-2017-12) 。
+以下自动微分的内容来自[How to Differentiate with a Computer](http://www.ams.org/publicoutreach/feature-column/fc-2017-12) . 
 
-我们计算一元函数$f(x)=x\sin(x^2)$在$x=3$处的一阶导。这个函数的计算图（computation graph）如下：
+我们计算一元函数$f(x)=x\sin(x^2)$在$x=3$处的一阶导. 这个函数的计算图(computation graph)如下:
 
 ![fcarc-december2017-function-graph-1](./images/fcarc-december2017-function-graph-1.jpg)
 
-由$f(3+\epsilon) = f(3) + f'(3)\epsilon$，我们可以算出$f'(3)$。
+由$f(3+\epsilon) = f(3) + f'(3)\epsilon$, 我们可以算出$f'(3)$. 
 $$
 \begin {align}
 u &= x^2 \\
@@ -126,7 +126,7 @@ w &= x \sin(v) \\
 f'(3) &= \sin(9) + 18\cos(9)
 \end {align}
 $$
-对于多元函数，我们同样可以算出偏导。比如对于$f(x,y,z)$， 我们可以用$f(x+\epsilon \bold{e_1},y+\epsilon \bold{e_2},z+\epsilon \bold{e_3})$求得梯度$[\partial f/\partial x,\partial f/\partial y,\partial f/\partial z]$。以$f(x,y,z)=xy\sin(yz)$在$(x,y,z)=(3,-1,2)$处的导数为例。该函数的计算图为
+对于多元函数, 我们同样可以算出偏导. 比如对于$f(x,y,z)$,  我们可以用$f(x+\epsilon \bold{e_1},y+\epsilon \bold{e_2},z+\epsilon \bold{e_3})$求得梯度$[\partial f/\partial x,\partial f/\partial y,\partial f/\partial z]$. 以$f(x,y,z)=xy\sin(yz)$在$(x,y,z)=(3,-1,2)$处的导数为例. 该函数的计算图为
 
 ![fcarc-december2017-function-graph-2](./images/fcarc-december2017-function-graph-2.jpg)
 $$
@@ -144,7 +144,7 @@ f(3,-1,2) &= -3\sin(-2) \\
 \nabla f(3,-1,2) &=[-\sin(-2), 3\sin(-2)-6\cos(-2), 3\cos(-2)]
 \end{align}
 $$
-对于更高阶的如二阶以上的一元函数，需要引入更高阶的泰勒展开。我在[notebook](https://github.com/luozhiyuan/notebooks/blob/master/differentiable_number.hpp)实现了一个可以求三阶导的类，测试了$f(x)=x\sin(x^2)$：
+对于更高阶的如二阶以上的一元函数, 需要引入更高阶的泰勒展开. 我在[notebook](https://github.com/luozhiyuan/notebooks/blob/master/differentiable_number.hpp)实现了一个可以求三阶导的类, 测试了$f(x)=x\sin(x^2)$:
 
 ```c++
 
@@ -171,7 +171,7 @@ test_function(const DifferentiableNumber<Order, Number>& x)
 
 ```
 
-同样对于多元函数，二阶的实现会变得比较复杂，参考[Hyper Dual Number](http://adl.stanford.edu/hyperdual/Fike_AIAA-2011-886.pdf)，引入运算法则：
+同样对于多元函数, 二阶的实现会变得比较复杂, 参考[Hyper Dual Number](http://adl.stanford.edu/hyperdual/Fike_AIAA-2011-886.pdf), 引入运算法则:
 $$
 \begin{align}
 a &= a_1+a_2\epsilon_1+a_3\epsilon_2+a_4\epsilon_1\epsilon_2 \\
@@ -187,17 +187,17 @@ f(a) &= f(a_1)+a_2f'(a_1)\epsilon_1+a_3f'(a_1)\epsilon_2+(a_4f'(a_1)+a_2a_3f''(a
 f(\bold{x_{ij}}) &= f(\bold{x}) + h_1 \frac{\part f(\bold{x})}{\part x_i}\epsilon_1 + h_2 \frac{\part f(\bold{x})}{\part x_j}\epsilon_2 + h_1h_2\frac{\part^2 f(\bold{x})}{\part x_i \part x_j} \epsilon_1\epsilon_2
 \end{align}
 $$
-其中$f(\bold{x_{ij}})$运行一次可以求出$x_i,x_j$ 的一阶导， 以及一个二阶导，后面我们会利用这个属性求出hessian matrix。我在[notebook](https://github.com/luozhiyuan/notebooks/blob/master/partial_differentiable_number.hpp)中写了一个，具体实现可见源码。对于本文和后面的内容来讲，二阶导已经足够。
+其中$f(\bold{x_{ij}})$运行一次可以求出$x_i,x_j$ 的一阶导,  以及一个二阶导, 后面我们会利用这个属性求出hessian matrix. 我在[notebook](https://github.com/luozhiyuan/notebooks/blob/master/partial_differentiable_number.hpp)中写了一个, 具体实现可见源码. 对于本文和后面的内容来讲, 二阶导已经足够. 
 
-以上称为**前向自动微分(forward mode of automatic differentiation)**。
+以上称为**前向自动微分(forward mode of automatic differentiation)**. 
 
-对于很多机器学习任务来讲，$f:\R^m \rightarrow \R^n, m \gg n$，计算这样的函数的梯度，以上前向模式会显得低效。所以还有种通过求解线性方程组的**反向自动微分（reverse mode of automatic differentiation）**。
+对于很多机器学习任务来讲, $f:\R^m \rightarrow \R^n, m \gg n$, 计算这样的函数的梯度, 以上前向模式会显得低效. 所以还有种通过求解线性方程组的**反向自动微分(reverse mode of automatic differentiation)**. 
 
-以上面$f(x,y,z)=xy\sin(yz)$为例，把中间变量前向（从下到上）算一遍得出这些中间变量的值$(x,y,z,t,u,v,w)$：
+以上面$f(x,y,z)=xy\sin(yz)$为例, 把中间变量前向(从下到上)算一遍得出这些中间变量的值$(x,y,z,t,u,v,w)$:
 
 ![fcarc-december2017-function-graph-3](./images/fcarc-december2017-function-graph-3.jpg)
 
-接下来我们引入伴随变量(adjoint variables)从上到下，反回来记录顶端节点对下面节点的偏导数（乘法法则与加法法则）：
+接下来我们引入伴随变量(adjoint variables)从上到下, 反回来记录顶端节点对下面节点的偏导数(乘法法则与加法法则):
 $$
 \begin{align}
 \bar w &= \frac{\part w}{\part w}=1 \\
@@ -209,7 +209,7 @@ $$
 \bar z &= \frac{\part w}{\part z}=\frac{\part w}{\part u} \frac{\part u}{\part z} = 3\cos(-2)
 \end{align}
 $$
-最终我们求出了$f$关于$x,y,z$的偏导。在实现上，我们可以构造一个线性方程组($(x,y,z) = (3,-1,2)$)。
+最终我们求出了$f$关于$x,y,z$的偏导. 在实现上, 我们可以构造一个线性方程组($(x,y,z) = (3,-1,2)$). 
 $$
 \begin{align}
 \bar x &= y \bar t=-\bar t\\
@@ -252,21 +252,21 @@ $$
 \bar w
 \end{pmatrix}
 $$
-求解以上线性方程即得$[\bar x, \bar y, \bar z]=[\part f/\part x, \part f/\part y, \part f/\part z]$。
+求解以上线性方程即得$[\bar x, \bar y, \bar z]=[\part f/\part x, \part f/\part y, \part f/\part z]$. 
 
-假设我们学过数值计算，其中就有一个牛顿法，还有求最值的梯度下降法等，利用梯度可以求得一个函数的局部最小值。如果有了自动微分，这些就好办了，毕竟，数值微分，你要给一个多大的$\epsilon$才合适是很难讲的，学习率参数？调参？
+假设我们学过数值计算, 其中就有一个牛顿法, 还有求最值的梯度下降法等, 利用梯度可以求得一个函数的局部最小值. 如果有了自动微分, 这些就好办了, 毕竟, 数值微分, 你要给一个多大的$\epsilon$才合适是很难讲的, 学习率参数？调参？
 
-以上自动微分是一个基本的知识，应用比较广泛，除了机器学习，如CFD，以及一些别的物理模拟系统中也会用到。
+以上自动微分是一个基本的知识, 应用比较广泛, 除了机器学习, 如CFD, 以及一些别的物理模拟系统中也会用到. 
 
 ## Monte Carlo 
 
-由于平时工作从来没有接触过这类比较高端的话题，只记得十多年前翻过一本比较通俗易懂的书，所以以下包括后面MCMC和MCMC path tracing等内容主要参考自[PBR](http://www.pbr-book.org/)，也是我对之前读书内容的一个复习，有兴趣的建议直接读原版内容。
+由于平时工作从来没有接触过这类比较高端的话题, 只记得十多年前翻过一本比较通俗易懂的书, 所以以下包括后面MCMC和MCMC path tracing等内容主要参考自[PBR](http://www.pbr-book.org/), 也是我对之前读书内容的一个复习, 有兴趣的建议直接读原版内容. 
 
-渲染的本质是重建信号：通过探测有限个点的信号，重建原始信号。因为我们的渲染的世界是连续的，无限的，所以这里自然要去采样，要使得重建出来的函数$\bar f$逼近真实函数$f$，或者我们说$E[\bar f]=f$(这里是无偏(unbias)的, 还有种是一致(consistent)-随着采样数趋向无穷, 重建出来的函数是真实函数的概率趋向于1)。这里自然就引出了概率的内容，假设我们学过一点概率（我会做很多假设，不然就会导致些许只言片语演变成一本书）。
+渲染的本质是重建信号:通过探测有限个点的信号, 重建原始信号. 因为我们的渲染的世界是连续的, 无限的, 所以这里自然要去采样, 要使得重建出来的函数$\bar f$逼近真实函数$f$, 或者我们说$E[\bar f]=f$(这里是无偏(unbias)的, 还有种是一致(consistent)-随着采样数趋向无穷, 重建出来的函数是真实函数的概率趋向于1). 这里自然就引出了概率的内容, 假设我们学过一点概率(我会做很多假设, 不然就会导致些许只言片语演变成一本书). 
 
-为了更好地理解这方面内容，避免一股脑儿涌过来的图形学术语的困扰，我把渲染抽象成一个函数，对于我的一个采样点它返回一个值。
+为了更好地理解这方面内容, 避免一股脑儿涌过来的图形学术语的困扰, 我把渲染抽象成一个函数, 对于我的一个采样点它返回一个值. 
 
-考虑这样一个函数$f(x,y)= (1+\sin(x^2+y^2))/2$，我们假设自己一开始并不知道这个函数是啥（假装自己不知道他的解析形式，因为渲染函数是没有解析解的），但要在一个定义域范围内重建这个函数（$-512<x,y<512,0<w_i<1$），每给一个采样点，我们可以计算得到这个采样点上的值。
+考虑这样一个函数$f(x,y)= (1+\sin(x^2+y^2))/2$, 我们假设自己一开始并不知道这个函数是啥(假装自己不知道他的解析形式, 因为渲染函数是没有解析解的), 但要在一个定义域范围内重建这个函数($-512<x,y<512,0<w_i<1$), 每给一个采样点, 我们可以计算得到这个采样点上的值. 
 
 我们先偷看下真实的让人目眩的函数图像(ground truth), 这个函数有一些有意思的特点, 后面将会遇到:
 
@@ -577,11 +577,11 @@ $H(q,p)=K(q,p)+V(q)$, 由之前$V(q)=-\log(\pi(q))$, 而动能$K(q,p)=p^2/(2m)$,
 
 真实感渲染要解决的问题就是: 怎么模拟光源点亮场景将满场景的光能糊我脸上. 
 
-一种是Radiosity(直观感受就像lightmap): 场景物体上每个(无穷小)面元(surfel)上都存下从场景里接收到的光能(irradiance), 摄像机观察的时候直接就知道他受到了多少辐射. 所以这是与视角无关的一种方法, 但需要存光能. 辐射度一般都会提到一个有限元的方法, 大致是假设了表面是漫反射模型, 计算出面元(patch/surfel)之间的关系(form factor), 把渲染方程转换成递推式(线性方程组)迭代求解.
+一种是Radiosity(直观感受就像lightmap): 场景物体上每个(无穷小)面元(surface patch/surfel)上都存下从场景里接收到的光能(irradiance), 摄像机观察的时候直接就知道他受到了多少辐射. 所以这是与视角无关的一种方法, 但需要存光能. 辐射度一般都会提到一个有限元的方法, 大致是假设了表面是漫反射模型, 计算出面元(surface patch/surfel)之间的关系(form factor), 把渲染方程转换成递推式(线性方程组)迭代求解.
 
 一种是Path Tracing: 摄像机发生光线, 在场景里反复弹射几次, 看看能不能照到光源, 由于光路可逆, 就等于有没有光从光源射到摄像机上, 如果有的话, 那探测到的光能就对看到的图像就有贡献了. 射不到的远方, 哪管他洪水滔天, 所以这是一种视角相关的方法, 摄像机动一动, 你得重来一遍. 这种方法类似Path Integral, 我们要叠加观察点到所有光源的所有光线.
 
-数学上要搞对这些东西还是有点麻烦的, 得推敲好多公式. 这方面资料非常丰富且宽泛, 可自行google: light transport equation. 我暂时舍弃这块内容的讨论:大致就是需要保证概率上的正确性, 以及更有效率地monte carlo估计积分.
+数学上要搞对这些东西还是有点麻烦的, 得推敲好多公式. 这方面资料非常丰富且宽泛, 可自行google: Light Transport Equation. 我暂时舍弃这块内容的讨论:大致就是需要保证概率上的正确性, 以及更有效率地monte carlo估计积分.
 
 我们用最简单的path tracing作为例子. 这是最简单易操作的实现.
 
@@ -598,7 +598,7 @@ BRDF一般有三个功能:
 
   
 
-当我们在场景里看到一个点时, 它的颜色由全场景所有方向的(直接/间接)光通过一定的反射比例反射而来, 是一个半球面所有方向$\Omega$上的积分:
+当我们在场景里看到一个点时, 它的颜色由全场景所有方向的(直接/间接)光通过一定的反射比例反射叠加而来, 是一个半球面所有方向$\Omega$上的积分:
 $$
 L_o(\omega_o, {\bf x})=\int_\Omega L_i(\omega_i) f(\omega_o, \omega_i)\cos\theta_i d\omega_i
 $$
@@ -648,7 +648,7 @@ c. 有交点
 
 这个简单的操作对我而言比较难, 当初看的第一版的PBR, 里面就有这个实现BDPT的练习题, 当年被它搞死(1.8GHZ的单核电脑半天才能完成一次调试反馈).
 
-我觉得如果这个能不抄别人代码自己独立正确实现的话, 就已经入门图形学path tracing方面的研究了. 当然现在[PBR](http://www.pbr-book.org/3ed-2018/Light_Transport_III_Bidirectional_Methods/Bidirectional_Path_Tracing.html)出到第三版了, 有兴趣可以学习一下. 这里简单抄下书里的内容, 如果不想研究也能知道个大概.
+我觉得如果能不抄别人代码自己独立正确实现一个高效的BDPT的话, 就已经入门图形学path tracing方面的研究了. 当然现在[PBR](http://www.pbr-book.org/3ed-2018/Light_Transport_III_Bidirectional_Methods/Bidirectional_Path_Tracing.html)出到第三版了, 有兴趣可以学习一下. 这里简单抄下书里的内容, 如果不想研究也能知道个大概.
 
 Light Path Tracing和Camera Path Tracing都比较简单, 一个在光源上随机采样一个方向, 一个在屏幕空间采样一个点射出一条光线. BDPT最关键的是怎么把这两条路径上的点连接起来做重要度采样(Multiple Importance Sampling).
 
@@ -704,23 +704,23 @@ $$
 
 这里的内容来自于论文[Differentiable Monte Carlo Ray Tracing through Edge Sampling](https://people.csail.mit.edu/tzumao/diffrt/).
 
-这里考虑这样一个问题，比如有一个摄影师拍照，他心中有一些“算法模型，让模特摆个大概的姿势，灯光大概的方向，然后自己找个大概的角度，接下来他要不断看相机里的“结果”，微调以上“参数”，直到在照相机里看到自己想要的“最优”的图片。这个过程就是一个“Differentiable Rendering”的过程。或者我们将它称为Inverse Rendering。只是现在我们有一张目标图片，如何调整我场景里的各种参数：比如摄像机的位置，角度，生成合适的三角面片，灯光方向等，最后接近或者达到目标图片的效果。
+这里考虑这样一个问题, 比如有一个摄影师拍照, 他心中有一些“算法模型, 让模特摆个大概的姿势, 灯光大概的方向, 然后自己找个大概的角度, 接下来他要不断看相机里的“结果”, 微调以上“参数”, 直到在照相机里看到自己想要的“最优”的图片. 这个过程就是一个“Differentiable Rendering”的过程. 或者我们将它称为Inverse Rendering. 只是现在我们有一张目标图片, 如何调整我场景里的各种参数:比如摄像机的位置, 角度, 生成合适的三角面片, 灯光方向等, 最后接近或者达到目标图片的效果. 
 
-我们有生成图片的一些现成的算法模型去生成图片，如路径跟踪，基于物理的材质模型，在这些成熟的前向渲染的算法框架里，如前向自动微分，我们的目标函数对所有参数求导，来做一个梯度下降。
+我们有生成图片的一些现成的算法模型去生成图片, 如路径跟踪, 基于物理的材质模型, 在这些成熟的前向渲染的算法框架里, 如前向自动微分, 我们的目标函数对所有参数求导, 来做一个梯度下降. 
 
-但这里有个难点，我们做微分的目标函数往往是连续的，而相对于场景变化，我们的图片结果可能是不连续的。其实是渲染方程中的可见性项（visibility term）引发的问题。考虑某个像素，恰好在白色三角形的边缘，而它背后是黑色的，那么相对于他的顶点变化，我们这个像素会产生突变，黑色到白色的突变，当然不只是颜色，这个像素对应的所有属性都发生了突变，比如shading相关的材质，几何信息都完全不一样。边缘像素相对这些参数求导，就相当于对一个阶跃函数(step function)进行求导, 数学上是需要有特殊的处理的.
+但这里有个难点, 我们做微分的目标函数往往是连续的, 而相对于场景变化, 我们的图片结果可能是不连续的. 其实是渲染方程中的可见性项(visibility term)引发的问题. 考虑某个像素, 恰好在白色三角形的边缘, 而它背后是黑色的, 那么相对于他的顶点变化, 我们这个像素会产生突变, 黑色到白色的突变, 当然不只是颜色, 这个像素对应的所有属性都发生了突变, 比如shading相关的材质, 几何信息都完全不一样. 边缘像素相对这些参数求导, 就相当于对一个阶跃函数(step function)进行求导, 数学上是需要有特殊的处理的.
 
-基于以上原因，我们假设在场景里没有纯点光，没有纯镜面，这些东西的采样分布都是一个$\delta$函数, 但可以用比较小的面光, 比较光滑的glossy surface来模拟.
+基于以上原因, 我们假设在场景里没有纯点光, 没有纯镜面, 因为点光和镜面这些东西的采样分布都是一个$\delta$函数, 但可以用比较小的面光, 比较光滑的glossy surface来模拟.
 
-对于visibility的问题, 需要分离边缘的情况, 单独考虑, 下面我们从一个像素说起。
+对于visibility的问题, 需要分离边缘的情况, 单独考虑, 下面我们从一个像素说起. 
 
-对于渲染过程（也就是摄影师怎么得到他预览的那张图片的过程），我们用path integral求一个积分，采用的方法是path tracing。
+对于渲染过程(也就是摄影师怎么得到他预览的那张图片的过程), 我们用path integral求一个积分, 采用的方法是path tracing. 
 
-对于一个像素的颜色$I$，是由无数这个像素上的点贡献的：
+对于一个像素的颜色$I$, 是由无数这个像素上的点贡献的:
 $$
 I = \int\int f(x,y)dxdy
 $$
-$f(x,y)$为一次path tracing的贡献（一次path tracing的结果$\times$权重）。而对于一组我们感兴趣的一些参数$\Phi$（比如摄像机的位置，mesh顶点的位置）来说，我们的函数可以写成$f(x,y;\Phi)$，这个像素相对这个参数的变化率（梯度）为：
+$f(x,y)$为一次path tracing的贡献(一次path tracing的结果$\times$权重). 而对于一组我们感兴趣的一些参数$\Phi$(比如摄像机的位置, mesh顶点的位置)来说, 我们的函数可以写成$f(x,y;\Phi)$, 这个像素相对这个参数的变化率(梯度)为:
 $$
 \nabla I = \nabla \int\int f(x,y;\Phi)dxdy
 $$
@@ -728,9 +728,9 @@ $$
 $$
 I \simeq \frac{1}{N}\Sigma f(x_i,y_j;\Phi)
 $$
-$x,y$分别是屏幕空间的采样点，$N$为采样总数。
+$x,y$分别是屏幕空间的采样点, $N$为采样总数. 
 
-省略场景参数，我们把$f$看成是函数在屏幕空间的取值。三角形的一条边将我们的屏幕空间分成上下两半($f_u,f_l$)，设这条边的直线方程为$\alpha(x,y)$。而我们的$f$可以由上下两半以及这条边表示：
+省略场景参数, 我们把$f$看成是函数在屏幕空间的取值. 三角形的一条边将我们的屏幕空间分成上下两半($f_u,f_l$), 设这条边的直线方程为$\alpha(x,y)$. 而我们的$f$可以由上下两半以及这条边表示:
 $$
 \theta(x)=\left\{ 
 \begin{array}{ll}
@@ -740,46 +740,46 @@ $$
 \end{array}\right. \\
 f(x,y)=\theta(\alpha(x,y))f_u(x,y) + \theta(-\alpha(x,y))f_l(x,y)
 $$
-$\theta$称为Heaviside step function(它的“导数”是狄拉克$\delta$函数)，当直线$\alpha$在某个三角形内部时，也能得到正确的结果此时$f=f_u=f_l$。
+$\theta$称为Heaviside step function(它的“导数”是狄拉克$\delta$函数), 当直线$\alpha$在某个三角形内部时, 也能得到正确的结果此时$f=f_u=f_l$. 
 
 <img src=".\images\f_u_f_l.png" alt="image-20200704084154562" style="zoom: 33%;" />
 
-在调整场景参数（比如改变三角形的位置或摄像机参数）的时候屏幕中这条边的顶点会发生偏移，从而影响最后的渲染结果。所以我们可以先求出相对于这两个顶点的偏导。
+在调整场景参数(比如改变三角形的位置或摄像机参数)的时候屏幕中这条边的顶点会发生偏移, 从而影响最后的渲染结果. 所以我们可以先求出相对于这两个顶点的偏导. 
 
-设某条边的两个顶点在屏幕中的坐标为$(a_x, a_y),(b_x,b_y)$，我们边上的点为下面这个多项式的零点：
+设某条边的两个顶点在屏幕中的坐标为$(a_x, a_y),(b_x,b_y)$, 我们边上的点为下面这个多项式的零点:
 $$
 \alpha(x,y) = (a_y-b_y)x + (b_x-a_x)y+(a_xb_y- b_xa_y)
 $$
-$\alpha(x,y)>0$表示在边的上方，$\alpha(x,y)<0$表示在下面。
+$\alpha(x,y)>0$表示在边的上方, $\alpha(x,y)<0$表示在下面. 
 
-我们的场景函数（把像素坐标映射到颜色的函数）$f$可以用一系列边表示出来，每条边都切割了屏幕，分成两个函数，把所有的这些函数记为$f_i$，加起来
+我们的场景函数(把像素坐标映射到颜色的函数)$f$可以用一系列边表示出来, 每条边都切割了屏幕, 分成两个函数, 把所有的这些函数记为$f_i$, 加起来
 $$
 \int\int f(x,y)dxdy = \int\int \sum_{i} \theta(\alpha_i(x,y))f_i(x,y)dxdy = \sum_{i}\int\int \theta(\alpha_i(x,y))f_i(x,y)dxdy
 $$
-$f_i$内部可能也包含了$\theta$，如一个三角形就由三个$\theta$相乘而得（三角形内部的点都在边的同一侧 $>0$）。
+$f_i$内部可能也包含了$\theta$, 如一个三角形就由三个$\theta$相乘而得(三角形内部的点都在边的同一侧 $>0$). 
 
-至此，我们要算的梯度，就是对$f$求微分，对上述和中的每一项求微分(乘法法则/链式法则):
+至此, 我们要算的梯度, 就是对$f$求微分, 对上述和中的每一项求微分(乘法法则/链式法则):
 $$
 \begin{align}
 \nabla \int\int\theta(\alpha_i(x,y))f_i(x,y)dxdy &= \int\int \delta(\alpha_i(x,y))\nabla\alpha_i(x,y)f_i(x,y)dxdy \\ &+ \int\int  \nabla f_i(x,y)\theta(\alpha_i(x,y))dxdy
 \end{align}
 $$
-以上，我们可以将积分变成在边上的部分（$\delta$）积分，和对原始函数的梯度部分（$f_i$并不考虑边上的不连续性）的积分。我们用Monte Carlo法估计上述两个积分。采样时后半部分即$f_i$梯度可以通过自动微分来累加平均求得。接下来需要处理的是前半部分($\delta$)函数的 Monte Carlo采样，这是这片论文的一个突破点。
+以上, 我们可以将积分变成在边上的部分($\delta$)积分, 和对原始函数的梯度部分($f_i$并不考虑边上的不连续性)的积分. 我们用Monte Carlo法估计上述两个积分. 采样时后半部分即$f_i$梯度可以通过自动微分来累加平均求得. 接下来需要处理的是前半部分($\delta$)函数的 Monte Carlo采样, 这是这片论文的一个突破点. 
 
-做积分变换， 区域的积分变成了线上的取值的积分：
+做积分变换,  区域的积分变成了线上的取值的积分:
 $$
 \int\int\delta(\alpha_i(x,y))\nabla\alpha_i(x,y)f_i(x,y)dxdy = \int_{\alpha_i(x,y)=0}\frac{\nabla\alpha_i(x,y)}{\mid\mid \nabla_{x,y}\alpha_i(x,y) \mid\mid}f_i(x,y)d\sigma(x,y)
 $$
-其中，$\mid\mid\nabla_{x,y}\alpha_i(x,y)\mid\mid$是边的长度，考虑了雅克比行列式。$\delta(x,y)$是变换后的测度。这里的数学变换我还没有完全理解,但可以参考下微分方程方面的资料.
+其中, $\mid\mid\nabla_{x,y}\alpha_i(x,y)\mid\mid$是边的长度, 考虑了雅克比行列式. $\delta(x,y)$是变换后的测度. 这里的数学变换我还没有完全理解,但可以参考下微分方程方面的资料.
 
-$\alpha_i$的关于各种参数变化的梯度如下(主要由直线方程得到)：
+$\alpha_i$的关于各种参数变化的梯度如下(主要由直线方程得到):
 $$
 \frac{\part \alpha_i}{\part a_x}=b_y -y,\frac{\part \alpha_i}{\part a_y} = x-b_x\\
 \frac{\part \alpha_i}{\part b_x}=y-a_y,\frac{\part \alpha_i}{\part b_y}=a_x-x\\
 \frac{\part \alpha_i}{\part x} = a_y-b_y,\frac{\part \alpha_i}{\part y}=b_x-a_x \\
 \mid\mid\nabla_{x,y}\alpha_i\mid\mid = sqrt(dot((\frac{\part \alpha_i}{\part x},\frac{\part \alpha_i}{\part y}),(\frac{\part \alpha_i}{\part x},\frac{\part \alpha_i}{\part y}))) =\sqrt{(a_x-b_x)^2+(a_y-b_y)^2}\\
 $$
-对于相对于别的参数变化梯度，我们可以用链式法则(边的顶点的相对这个参数的变化,这个变化率是可以通过自动微分的方式得到的)来得到，比如对于参数$p$(比如相机参数, mesh顶点,法线):
+对于相对于别的参数变化梯度, 我们可以用链式法则(边的顶点的相对这个参数的变化,这个变化率是可以通过自动微分的方式得到的)来得到, 比如对于参数$p$(比如相机参数, mesh顶点,法线):
 $$
 \frac{\part \alpha}{\part p} = \frac{\part \alpha}{\part a_x}\frac{\part a_x}{\part p}+\frac{\part \alpha}{\part b_x}\frac{\part b_x}{\part p}+\frac{\part \alpha}{\part a_y}\frac{\part a_y}{\part p} + \frac{\part \alpha}{\part b_y}\frac{\part b_y}{\part p}
 $$
@@ -910,9 +910,9 @@ $$
 
 这里只是蜻蜓点水, 具体实现有兴趣的可以看作者源码. 
 
-以上主要是这篇论文的基本脉络, 对于完全的新手来说，这篇论文的知识量还是比较大的，对于实现来讲，从头撸一遍，也是不小的工程量，发个siggraph不容易。图形渲染在工程上一向"臭名昭著”，有的看起来很简单三言两语就能讲个大概了，但数学上要搞对，实现上没bug是很难的(比如vertex connection and merging(vcm)；unifying points, beams, paths(upbp))。半天渲一张，调试就抓狂。不过一个领域的成熟，往往是从一开始偏向智力技巧，变成智力和体力并重，最终大量教程和工具的出现，变成体力活。
+以上主要是这篇论文的基本脉络, 对于完全的新手来说, 这篇论文的知识量还是比较大的, 对于实现来讲, 从头撸一遍, 也是不小的工程量, 发个siggraph不容易. 图形渲染在工程上一向"臭名昭著”, 有的看起来很简单三言两语就能讲个大概了, 但数学上要搞对, 实现上没bug是很难的(比如vertex connection and merging(vcm)；unifying points, beams, paths(upbp)). 半天渲一张, 调试就抓狂. 不过一个领域的成熟, 往往是从一开始偏向智力技巧, 变成智力和体力并重, 最终大量教程和工具的出现, 变成体力活. 
 
-话说回来, 这篇论文没考虑光线传播介质的影响, 如果对differentiable rendering有更多的兴趣, 可以继续学习以下两篇论文, 基本上可以认为是现在(2020年)为止最前沿的研究了(state of the art):
+话说回来, 这篇论文没考虑光线传播介质的影响, 如果对differentiable rendering有更多的兴趣, 可以继续学习以下两篇论文(后者可能需要一些电磁辐射方面的知识), 基本上可以认为是现在(2020年)为止最前沿的研究了(state of the art):
 
 [A First-Order Analysis of Lighting, Shading, and Shadows](https://cseweb.ucsd.edu/~ravir/papers/firstorder/gradient.pdf)
 
@@ -920,7 +920,7 @@ $$
 
 ## Hessian-Hamiltonian Monte Carlo ray tracing
 
-通常的MCMC会用高斯分布来做为Hastings term. 图形学里的anistropic的材质, 在x，y两个方向上是分布不均匀的， 我们用二维高斯来拟合，而gradient，反映了这两个方向上的变化率，进一步的反映二阶导的hessian 矩阵可以引导我们采样的方向。比如牛顿法。
+通常的MCMC会用高斯分布来做为Hastings term. 图形学里的anistropic的材质, 在x, y两个方向上是分布不均匀的,  我们用二维高斯来拟合, 而gradient, 反映了这两个方向上的变化率, 进一步的反映二阶导的hessian 矩阵可以引导我们采样的方向. 比如牛顿法. 
 
 接下来我们继续这篇博士论文, 这部分主要来自[Anisotropic Gaussian Mutations for Metropolis Light Transport through Hessian-Hamiltonian Dynamics](https://people.csail.mit.edu/tzumao/h2mc/), 讲的是传统的图形学知识: 如何用光线跟踪渲染图片. 一下大部分内容是论文关键内容的翻译抄写.
 
@@ -1074,13 +1074,13 @@ $$
 
 ## *Path Integral
 
-费曼研究生时发明了一种叫路径积分的东西， Path Tracing一类方法就是从这里来的， 我觉得很有意思， 写在这里。如果你能看懂讲旋转的[球谐笔记](https://zhuanlan.zhihu.com/p/140421707)的话，下面内容也不会太难。写这个主要是，前面讲了Path Tracing，Hamiltonian, 概率论， 那么来点量子力学把它们用到的东西搅在一块，毕竟量子力学是一种“概率”论，“装逼要装到深处”。
+费曼研究生时发明了一种叫路径积分的东西,  Path Tracing一类方法就是从这里来的,  我觉得很有意思,  写在这里. 如果你能看懂讲旋转的[球谐笔记](https://zhuanlan.zhihu.com/p/140421707)的话, 下面内容也不会太难. 写这个主要是, 前面讲了Path Tracing, Hamiltonian, 概率论,  那么来点量子力学把它们用到的东西搅在一块, 毕竟量子力学是一种“概率”论, “装逼要装到深处”. 
 
 不过这块在数学上的根基不是非常牢固, 不像微积分经过了几百年发展.
 
 ![path integral](./images/path_integral_arrows.png)
 
-用$q$表示一个粒子的位置， 用$p$表示动量，每个可观测量都对应一个算符，这里分别用$\hat{q}$，$\hat{p}$表示, 我们有一些结论(这里可以参考一些简单的量子力学的资料)：
+用$q$表示一个粒子的位置,  用$p$表示动量, 每个可观测量都对应一个算符, 这里分别用$\hat{q}$, $\hat{p}$表示, 我们有一些结论(这里可以参考一些简单的量子力学的资料):
 $$
 \hat p = -i \hbar \frac{\part}{\part q}\\
 \hat q = q\\
@@ -1089,17 +1089,17 @@ $$
 [\hat{q}, \hat{p}] = i \hbar\\
 [\hat{q}, \hat{q}] = [\hat{p}, \hat{p}]=0
 $$
-$\hbar$为普朗克常数， 为方便起见，直接令其为1。方程
+$\hbar$为普朗克常数,  为方便起见, 直接令其为1. 方程
 $$
 \hat{q} \vert q\rangle=q\vert q\rangle
 $$
-表示$\vert q\rangle$是算符$\hat{q}$的本征态(eigen state)，$q$是本征值。
+表示$\vert q\rangle$是算符$\hat{q}$的本征态(eigen state), $q$是本征值. 
 
-直接上薛定谔方程，这是一个描述波函数的微分方程。在量子力学里，一个系统在时间$t$的状态，可以用状态向量来表示$\vert \psi(t)\rangle$来表示，满足薛定谔方程:
+直接上薛定谔方程, 这是一个描述波函数的微分方程. 在量子力学里, 一个系统在时间$t$的状态, 可以用状态向量来表示$\vert \psi(t)\rangle$来表示, 满足薛定谔方程:
 $$
 i\frac{\part}{\part t}\vert \psi(t)\rangle = \hat{H}\vert \psi(t)\rangle
 $$
-假设初始时间$t=t_i$， 系统初始状态为$\vert \psi_0\rangle$，如果我们的哈密尔顿量(Hamiltonian)不含时（time-independent），我们就可以在形式上解出上面这个微分方程:
+假设初始时间$t=t_i$,  系统初始状态为$\vert \psi_0\rangle$, 如果我们的哈密尔顿量(Hamiltonian)不含时(time-independent), 我们就可以在形式上解出上面这个微分方程:
 $$
 \vert \psi(t)\rangle = e^{-i\hat{H}\cdot(t-t_i)}\vert \psi_0\rangle
 $$
@@ -1107,15 +1107,15 @@ $$
 $$
 \hat{U}(t,t_i) = e^{-i\hat{H}\cdot(t-t_i)}
 $$
-这个算符是酉的(Unitary Operator)。我们可以测量某个时刻这个系统的状态，比如$t_f$时刻的位置，我们可以求出这个酉矩阵，对于两个本征态之间对应的矩阵元：
+这个算符是酉的(Unitary Operator). 我们可以测量某个时刻这个系统的状态, 比如$t_f$时刻的位置, 我们可以求出这个酉矩阵, 对于两个本征态之间对应的矩阵元:
 $$
 \langle q_f\vert \hat{U}(t_f, t_i)\vert q_i\rangle
 $$
-我们希望算出$\hat{U}$。
+我们希望算出$\hat{U}$. 
 
-我觉得这个形式有点像马尔科夫链的随机矩阵，同样是一个状态转移到另一个状态，同样是一个矩阵，当然矩阵满足的条件有所不同。
+我觉得这个形式有点像马尔科夫链的随机矩阵, 同样是一个状态转移到另一个状态, 同样是一个矩阵, 当然矩阵满足的条件有所不同. 
 
-我们把从$t_i$到$t_f$的时间段分成$N$等分，每一份的时间段为
+我们把从$t_i$到$t_f$的时间段分成$N$等分, 每一份的时间段为
 $$
 \Delta t = \frac{t_f-t_i}{N}
 $$
