@@ -17,7 +17,7 @@ xysinxy(const PartialDifferentiableNumber<Number>& x, const PartialDifferentiabl
 	auto Sin = [](Number x) {return std::sin(x); };
 	auto DSin = [](Number x) {return std::cos(x); };
 	auto DDSin = [](Number x) {return -std::sin(x); };
-	return (PartialDifferentiableNumber<Number>(1)+ScalarF(
+	return (PartialDifferentiableNumber<Number>(1+0.002)+ScalarF(
 		x * x + y * y, 
 		Sin, 
 		DSin, 
