@@ -201,7 +201,7 @@ struct PathVertex
 			return Vec();
 		if(type == VertexType::Surface)
 		{
-			return spheres[object_id].c;
+			return spheres[object_id].c * (1.0/ M_PI);
 		}
 		return Vec();
 	}
@@ -277,11 +277,14 @@ void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std:
 {
 	double t;                               // distance to intersection 
 	int id = 0;                               // id of intersected object 
-	if (!intersect(r, t, id) || depth > max_depth) return; // if miss or exceeds, return black 
+	if (!intersect(r, t, id) || depth >= max_depth) return; // if miss or exceeds, return black 
 	if (sp.length_sqr() == 0) //black
 		return;
 	const Sphere &obj = spheres[id];        // the hit object 
 	Vec x = r.o + r.d*t, n = (x - obj.p).norm(), nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
+
+	if(f.length_sqr() == 0 && obj.e.length_sqr() == 0){ return; }
+
 	//rr prob
 	double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z; // max refl 
 	++depth;
@@ -304,8 +307,10 @@ void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std:
 		}
 
 		double pdf = brdf_pdf(obj.refl, d, r.d*(-1), nl);
+		f = f * (1/M_PI);
 		path_trace(Ray(x + d * kRayEpsilon, d), max_depth, depth, Xi, path, pdf, 
-			(obj.e+f).mult(sp) * (AbsDot(nl, d.norm() * (-1)) / pdf));
+			obj.e + pdf == 0? Vec():(f.mult(sp)  * (AbsDot(nl, d.norm() * (-1)) / pdf))
+		); // INV_PI/INV_PI
 	}
 	else if (obj.refl == SPEC)            // Ideal SPECULAR reflection 
 	{
@@ -629,7 +634,7 @@ Vec bdpt_radiance(const Ray &r, int depth, unsigned short *Xi, std::vector<std::
 		CameraPDF(r.d, &unused, &pdf);
 		auto camera_start = PathVertex::CreateCameraVertex(r.o, sp * (1.0/pdf));
 		camera_path.push_back(camera_start);
-		path_trace(r, kMaxDepth, 0, Xi, &camera_path, pdf, sp * (1.0/pdf));
+		path_trace(r, kMaxDepth + 1, 0, Xi, &camera_path, pdf, sp * (1.0/pdf));
 	}
 	//light path
 	std::vector<PathVertex> light_path;
@@ -643,8 +648,6 @@ Vec bdpt_radiance(const Ray &r, int depth, unsigned short *Xi, std::vector<std::
 		Vec pos(spheres[kLightIndex].p + dir * light_radius);
 
 		double light_pdf = light_pdf_dir * light_pdf_pos;
-		light_pdf = 1;
-		
 		Vec reflectance = spheres[kLightIndex].e * (1.0 / (light_pdf));
 		PathVertex light_start = PathVertex::CreateLightVertex(Refl_t::DIFF, reflectance, pos, dir, light_pdf);
 		light_path.push_back(light_start);
@@ -668,7 +671,7 @@ Vec bdpt_radiance(const Ray &r, int depth, unsigned short *Xi, std::vector<std::
 
 			//debug
 			//if (s > 1)
-				//continue;
+			//	continue;
 
 			double misWeight = 0.f;
 
@@ -753,7 +756,8 @@ int main(int argc, char *argv[]) {
 	//debug
 		//int x = 697, y = 571; //behind spec ball
 		//int x = 841, y = 461; //wall
-		int debug_x = 584, debug_y = 610; //on sphere
+		//int debug_x = 584, debug_y = 610; //on sphere
+		int debug_x = 258, debug_y = 578; //on sphere
 		Vec d = cx * (debug_x / w - .5) + cy * (((h- debug_y) / h) - .5) + cam.d;
 		//debug
 		debug_ray_dir = d.norm();
