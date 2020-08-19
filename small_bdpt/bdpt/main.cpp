@@ -23,7 +23,7 @@ const int kDefaultSPP = 16;
 Vec debug_ray_dir;
 bool debug_ray_on = false;
 #else
-const int kDefaultSPP = 1;
+const int kDefaultSPP = 1024;
 #endif
 
 const int kLightIndex = 8;
@@ -320,12 +320,12 @@ void path_trace(PathTraceMode mode, const Ray &r, int max_depth, int depth, unsi
 		}
 
 		double pdf = brdf_pdf(obj.refl, d, r.d*(-1), nl);
-		f = f * (1/M_PI);
+		f = f * (1/M_PI); //lambertian brdf
 		double abs_cos = AbsDot(nl, d.norm() * (-1));
 		Vec passthrough = pdf == 0 ? Vec() : (f.mult(sp)  * ((abs_cos / pdf)));
 
 		if (mode == PathTraceMode::CameraRay)
-			passthrough = passthrough + obj.e * abs_cos;
+			passthrough = passthrough + obj.e * (abs_cos);
 		path_trace(mode, Ray(x + d * kRayEpsilon, d), max_depth, depth, Xi, path, pdf,
 			passthrough
 		); // INV_PI/INV_PI
@@ -557,11 +557,15 @@ Vec ConnectBDPT(std::vector<PathVertex>& light_path, std::vector<PathVertex>& ca
 		const PathVertex& pt = camera_path[t - 1];
 		//createt light vertex
 		double light_radius = spheres[kLightIndex].rad;
-		Vec dir((pt.position - spheres[kLightIndex].p).norm());
-		Vec pos(spheres[kLightIndex].p + dir * light_radius);
+		double light_x, light_y, light_z;
+		uniform_sampling_sphere(Xi, &light_x, &light_y, &light_z);
+		Vec light_sample_pos = spheres[kLightIndex].p + Vec(light_x, light_y, light_z);
+		double pos_pdf =  1/ (4*M_PI * light_radius * light_radius);
+		Vec dir((pt.position - light_sample_pos).norm());
+		Vec pos(light_sample_pos);
 		//double light_pdf = (4*M_PI*light_radius*light_radius);
 		
-		double dist_sqr = (pt.position - spheres[kLightIndex].p).length_sqr();
+		double dist_sqr = (pt.position - light_sample_pos).length_sqr();
 		//double light_pdf = (4*M_PI * dist_sqr);
 		double light_pdf = 1 / (2 * M_PI* (1 - sqrt(1 - ((light_radius*light_radius) / dist_sqr))));
 			
@@ -571,7 +575,7 @@ Vec ConnectBDPT(std::vector<PathVertex>& light_path, std::vector<PathVertex>& ca
 			
 		wi = wi.norm();
 		if (light_pdf > 0) {
-			Vec reflectance = spheres[kLightIndex].e*(1.0 / light_pdf);// *(1.0 / (pt.position - spheres[kLightIndex].p).length_sqr());
+			Vec reflectance = spheres[kLightIndex].e*(1.0 / (pos_pdf * light_pdf));// *(1.0 / (pt.position - spheres[kLightIndex].p).length_sqr());
 #ifdef _DEBUG
 			bool debug = false;
 
@@ -662,16 +666,25 @@ Vec bdpt_radiance(const Ray &r, int depth, unsigned short *Xi, std::vector<std::
 	std::vector<PathVertex> light_path;
 	{
 		double light_radius = spheres[kLightIndex].rad;
-		double light_pdf_dir = 1 / M_PI;
 		double light_pdf_pos = 1 / (4 * M_PI*light_radius*light_radius);
 		double light_x, light_y, light_z;
 		uniform_sampling_sphere(Xi, &light_x, &light_y, &light_z);
-		Vec dir(light_x, light_y, light_z);
-		Vec pos(spheres[kLightIndex].p + dir * light_radius);
+		Vec light_normal(light_x, light_y, light_z);
+		Vec pos(spheres[kLightIndex].p + light_normal * light_radius);
 
+		Vec dir;
+		double light_pdf_dir = 1 / M_PI;
+		{
+			Point2f u{erand48(Xi), erand48(Xi)};
+			Vec w = CosineSampleHemisphere(u);
+		    light_pdf_dir = w.z/(1/M_PI);
+			Vec v1, v2, n(light_normal);
+			CoordinateSystem(n, &v1, &v2);
+			dir = v1 * w.x + v2 * w.y +  n * w.z;
+		}
 		double light_pdf = light_pdf_dir * light_pdf_pos;
 		Vec reflectance = spheres[kLightIndex].e * (1.0 / (light_pdf));
-		PathVertex light_start = PathVertex::CreateLightVertex(Refl_t::DIFF, reflectance, pos, dir, light_pdf);
+		PathVertex light_start = PathVertex::CreateLightVertex(Refl_t::DIFF, reflectance, pos, light_normal, light_pdf);
 		light_path.push_back(light_start);
 		path_trace(PathTraceMode::LightRay, Ray(pos, dir), kMaxDepth, 0, Xi, &light_path, light_pdf_dir, reflectance);
 	}

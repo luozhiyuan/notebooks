@@ -10,7 +10,7 @@ struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
    Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); } 
    Vec norm()const { return *this * (1 / length()); }
    double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross: 
-   Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);} 
+   Vec operator%(const Vec&b)const {return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);} 
    double length()const { return sqrt(length_sqr()); }
    double length_sqr()const { return (dot(*this)); }
 
@@ -46,3 +46,11 @@ inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
 inline Vec clamp(const Vec& v){ return Vec(clamp(v.x), clamp(v.y),clamp(v.z)); }
 inline int toInt(float x){ return int(pow(clamp(x),1/2.2)*255+.5); }
 
+inline void CoordinateSystem(const Vec &v1, Vec *v2,
+                             Vec *v3) {
+    if (std::abs(v1.x) > std::abs(v1.y))
+        *v2 = Vec(-v1.z, 0, v1.x) * (1.0 / std::sqrt(v1.x * v1.x + v1.z * v1.z));
+    else
+        *v2 = Vec(0, v1.z, -v1.y) * (1.0 / std::sqrt(v1.y * v1.y + v1.z * v1.z));
+    *v3 = v1 % *v2;
+}
