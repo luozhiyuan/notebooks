@@ -16,7 +16,7 @@
 
 const int kGroundTruthSPP = 4096*8;
 
-const int kMaxDepth = 6;
+const int kMaxDepth = 12;
 #ifdef _DEBUG
 const int kDefaultSPP = 16;
 
@@ -273,17 +273,30 @@ struct PathVertex
 	}
 };
 
-void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std::vector<PathVertex>* path, double pdfFwd, const Vec& sp)
+enum class PathTraceMode
+{
+	CameraRay,
+	LightRay
+};
+void path_trace(PathTraceMode mode, const Ray &r, int max_depth, int depth, unsigned short *Xi, std::vector<PathVertex>* path, double pdfFwd, const Vec& sp)
 {
 	double t;                               // distance to intersection 
 	int id = 0;                               // id of intersected object 
-	if (!intersect(r, t, id) || depth >= max_depth) return; // if miss or exceeds, return black 
-	if (sp.length_sqr() == 0) //black
-		return;
+	if (!intersect(r, t, id) || depth >= max_depth) 
+		return; // if miss or exceeds, return black 
 	const Sphere &obj = spheres[id];        // the hit object 
 	Vec x = r.o + r.d*t, n = (x - obj.p).norm(), nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
 
-	if(f.length_sqr() == 0 && obj.e.length_sqr() == 0){ return; }
+	if(f.length_sqr() == 0 && obj.e.length_sqr() == 0)
+	{ 
+		//end
+		if (mode == PathTraceMode::CameraRay) {
+			(*path)[depth].pdfFwd = pdfFwd;
+			(*path)[depth].pdfRev = 1;
+		}
+
+		return; 
+	}
 
 	//rr prob
 	double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z; // max refl 
@@ -308,8 +321,13 @@ void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std:
 
 		double pdf = brdf_pdf(obj.refl, d, r.d*(-1), nl);
 		f = f * (1/M_PI);
-		path_trace(Ray(x + d * kRayEpsilon, d), max_depth, depth, Xi, path, pdf, 
-			obj.e + pdf == 0? Vec():(f.mult(sp)  * (AbsDot(nl, d.norm() * (-1)) / pdf))
+		double abs_cos = AbsDot(nl, d.norm() * (-1));
+		Vec passthrough = pdf == 0 ? Vec() : (f.mult(sp)  * ((abs_cos / pdf)));
+
+		if (mode == PathTraceMode::CameraRay)
+			passthrough = passthrough + obj.e * abs_cos;
+		path_trace(mode, Ray(x + d * kRayEpsilon, d), max_depth, depth, Xi, path, pdf,
+			passthrough
 		); // INV_PI/INV_PI
 	}
 	else if (obj.refl == SPEC)            // Ideal SPECULAR reflection 
@@ -319,7 +337,7 @@ void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std:
 		auto new_vertex = PathVertex::CreateSurfaceVertex(id, obj.refl, sp, x, nl, pdfFwd, (*path)[depth - 1]);
 		path->push_back(new_vertex);
 		Vec d = (r.d - n * 2 * n.dot(r.d)).norm();
-		path_trace(Ray(x + d * kRayEpsilon, d), max_depth, depth, Xi, path, 0, f.mult(sp));
+		path_trace(mode, Ray(x + d * kRayEpsilon, d), max_depth, depth, Xi, path, 0, f.mult(sp));
 		//return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi)); 
 	}
 	else //refr
@@ -335,7 +353,7 @@ void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std:
 			auto new_vertex = PathVertex::CreateSurfaceVertex(id, obj.refl, sp, x, nl, pdfFwd, (*path)[depth - 1]);
 			path->push_back(new_vertex);
 
-			path_trace(reflRay, max_depth, depth, Xi, path, 0, f.mult(sp));
+			path_trace(mode, reflRay, max_depth, depth, Xi, path, 0, f.mult(sp));
 			//return obj.e + f.mult(radiance(reflRay,depth,Xi)); 
 		}
 		else 
@@ -355,14 +373,14 @@ void path_trace(const Ray &r, int max_depth, int depth, unsigned short *Xi, std:
 					auto new_vertex = PathVertex::CreateSurfaceVertex(id, obj.refl, sp, x, nl, pdfFwd, (*path)[depth - 1]);
 					path->push_back(new_vertex);
 
-					path_trace(reflRay, max_depth, depth, Xi, path, 0, sp.mult(f*RP));
+					path_trace(mode, reflRay, max_depth, depth, Xi, path, 0, sp.mult(f*RP));
 				}
 				else
 				{
 					auto new_vertex = PathVertex::CreateSurfaceVertex(id, obj.refl, sp, x, nl, pdfFwd, (*path)[depth - 1]);
 					path->push_back(new_vertex);
 
-					path_trace(Ray(x + tdir * kRayEpsilon, tdir), max_depth, depth, Xi, path, 0, sp.mult(f*TP));
+					path_trace(mode, Ray(x + tdir * kRayEpsilon, tdir), max_depth, depth, Xi, path, 0, sp.mult(f*TP));
 				}
 				//TODO:
 				//add delta path vertex
@@ -541,7 +559,11 @@ Vec ConnectBDPT(std::vector<PathVertex>& light_path, std::vector<PathVertex>& ca
 		double light_radius = spheres[kLightIndex].rad;
 		Vec dir((pt.position - spheres[kLightIndex].p).norm());
 		Vec pos(spheres[kLightIndex].p + dir * light_radius);
-		double light_pdf = (4*M_PI*light_radius*light_radius);
+		//double light_pdf = (4*M_PI*light_radius*light_radius);
+		
+		double dist_sqr = (pt.position - spheres[kLightIndex].p).length_sqr();
+		//double light_pdf = (4*M_PI * dist_sqr);
+		double light_pdf = 1 / (2 * M_PI* (1 - sqrt(1 - ((light_radius*light_radius) / dist_sqr))));
 			
 		Vec wi = (pos - pt.position);
 		if (wi.length_sqr() <= DBL_EPSILON)
@@ -549,7 +571,7 @@ Vec ConnectBDPT(std::vector<PathVertex>& light_path, std::vector<PathVertex>& ca
 			
 		wi = wi.norm();
 		if (light_pdf > 0) {
-			Vec reflectance = spheres[kLightIndex].e * (1.0 / light_pdf);// *(1.0 / (pt.position - spheres[kLightIndex].p).length_sqr());
+			Vec reflectance = spheres[kLightIndex].e*(1.0 / light_pdf);// *(1.0 / (pt.position - spheres[kLightIndex].p).length_sqr());
 #ifdef _DEBUG
 			bool debug = false;
 
@@ -634,7 +656,7 @@ Vec bdpt_radiance(const Ray &r, int depth, unsigned short *Xi, std::vector<std::
 		CameraPDF(r.d, &unused, &pdf);
 		auto camera_start = PathVertex::CreateCameraVertex(r.o, sp * (1.0/pdf));
 		camera_path.push_back(camera_start);
-		path_trace(r, kMaxDepth + 1, 0, Xi, &camera_path, pdf, sp * (1.0/pdf));
+		path_trace(PathTraceMode::CameraRay, r, kMaxDepth + 1, 0, Xi, &camera_path, pdf, sp * (1.0/pdf));
 	}
 	//light path
 	std::vector<PathVertex> light_path;
@@ -651,7 +673,7 @@ Vec bdpt_radiance(const Ray &r, int depth, unsigned short *Xi, std::vector<std::
 		Vec reflectance = spheres[kLightIndex].e * (1.0 / (light_pdf));
 		PathVertex light_start = PathVertex::CreateLightVertex(Refl_t::DIFF, reflectance, pos, dir, light_pdf);
 		light_path.push_back(light_start);
-		path_trace(Ray(pos, dir), kMaxDepth, 0, Xi, &light_path, light_pdf_dir, reflectance);
+		path_trace(PathTraceMode::LightRay, Ray(pos, dir), kMaxDepth, 0, Xi, &light_path, light_pdf_dir, reflectance);
 	}
 
 	//connect
@@ -757,7 +779,8 @@ int main(int argc, char *argv[]) {
 		//int x = 697, y = 571; //behind spec ball
 		//int x = 841, y = 461; //wall
 		//int debug_x = 584, debug_y = 610; //on sphere
-		int debug_x = 258, debug_y = 578; //on sphere
+		//int debug_x = 258, debug_y = 578; //on sphere
+		int debug_x = 461, debug_y = 704; //on floor
 		Vec d = cx * (debug_x / w - .5) + cy * (((h- debug_y) / h) - .5) + cam.d;
 		//debug
 		debug_ray_dir = d.norm();

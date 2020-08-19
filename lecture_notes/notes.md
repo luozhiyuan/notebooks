@@ -449,7 +449,7 @@ $mutate_1$:
 
 马尔科夫链的一个问题是有的地方收敛得快, 有的地方收敛得慢. 还有些地方$\pi(q')/\pi(q)$很小, 就会卡在那卡很久. 如果不用large step跳出去, 而只用$mutate_1$, 就会出现如下图的情况, (a)是10000次迭代的结果, 而当300000次迭代之后才逃出去. MCMC虽然是无偏的, 但前提是无穷久的时间.
 
-![metro-10k-1mutate](.\images\metro-300k-1mutate.svg)
+![metro-10k-1mutate](.\images\metro-10k-1mutate.svg)
 
 ![metro-300k-1mutate](.\images\metro-300k-1mutate.svg)
 
